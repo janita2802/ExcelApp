@@ -46,8 +46,6 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        {" "}
-        {/* Wrap with LanguageProvider */}
         <NavigationContainer>
           <View style={{ flex: 1, position: "relative" }}>
             <Stack.Navigator initialRouteName="Login">
@@ -67,11 +65,9 @@ export default function App() {
                 options={{ headerShown: false }}
               />
             </Stack.Navigator>
-
-            {/* Floating buttons placed outside screen content */}
-            <ThemeToggleFloating />
           </View>
         </NavigationContainer>
+        <ThemeToggleFloating />
       </LanguageProvider>
     </ThemeProvider>
   );
@@ -86,8 +82,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   floatingBtn: {
-    padding: 12,
+    padding: 5,
     borderRadius: 30,
-    elevation: 5,
   },
 });

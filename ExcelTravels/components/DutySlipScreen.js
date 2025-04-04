@@ -84,9 +84,10 @@ const DutySlipScreen = () => {
               <TouchableOpacity
                 style={styles.nextButton}
                 onPress={() =>
-                  navigation.navigate("VehicleDetailScreen", {
-                    dutySlipId: dutySlipId,
-                  })
+                  // navigation.navigate("VehicleDetailScreen", {
+                  //   dutySlipId: dutySlipId,
+                  // })
+                  Alert.alert("ok")
                 }
               >
                 <Text style={styles.nextButtonText}>Next →</Text>

@@ -1,18 +1,19 @@
-import React, { createContext, useState, useContext } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LanguageContext = createContext();
 
 export const LanguageProvider = ({ children }) => {
-  const [currentLanguage, setCurrentLanguage] = useState("en"); // default to English
+  const [currentLanguage, setCurrentLanguage] = useState("en");
 
-  const toggleLanguage = () => {
-    setCurrentLanguage((prev) => {
-      if (prev === "en") return "es"; // English to Spanish
-      if (prev === "es") return "hi"; // Spanish to Hindi
-      return "en"; // Hindi back to English
-    });
+  const toggleLanguage = async () => {
+    const newLanguage =
+      currentLanguage === "en" ? "es" : currentLanguage === "es" ? "hi" : "en";
+    setCurrentLanguage(newLanguage);
+    await AsyncStorage.setItem("@languagePreference", newLanguage);
   };
 
+  // Make sure to return only valid React elements
   return (
     <LanguageContext.Provider value={{ currentLanguage, toggleLanguage }}>
       {children}
