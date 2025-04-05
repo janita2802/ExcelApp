@@ -218,50 +218,53 @@ const LoginScreen = ({ navigation }) => {
                 <View style={styles.modalContainer}>
                   <Text style={styles.modalTitle}>Reset Password</Text>
 
-                  <TextInput
-                    style={styles.input}
-                    placeholder="New Password"
-                    secureTextEntry
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm Password"
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                  />
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalLabel}>New Password</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="New Password"
+                      secureTextEntry
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                    />
 
-                  <TouchableOpacity
-                    style={styles.loginButton}
-                    onPress={() => {
-                      if (!newPassword || !confirmPassword) {
-                        Alert.alert("Error", "Fill in all fields");
-                        return;
-                      }
+                    <Text style={styles.modalLabel}>Confirm Password</Text>
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Confirm Password"
+                      secureTextEntry
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                    />
 
-                      if (newPassword !== confirmPassword) {
-                        Alert.alert("Error", "Passwords do not match");
-                        return;
-                      }
+                    <TouchableOpacity
+                      style={styles.modalButton}
+                      onPress={() => {
+                        if (!newPassword || !confirmPassword) {
+                          Alert.alert("Error", "Fill in all fields");
+                          return;
+                        }
 
-                      Alert.alert("Success", "Password reset successfully");
-                      setNewPassword("");
-                      setConfirmPassword("");
-                      setShowResetModal(false);
-                    }}
-                  >
-                    <Text style={styles.loginButtonText}>Reset Password</Text>
-                  </TouchableOpacity>
+                        if (newPassword !== confirmPassword) {
+                          Alert.alert("Error", "Passwords do not match");
+                          return;
+                        }
+
+                        Alert.alert("Success", "Password reset successfully");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                        setShowResetModal(false);
+                      }}
+                    >
+                      <Text style={styles.modalButtonText}>Reset Password</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity
                     onPress={() => setShowResetModal(false)}
-                    style={{ marginTop: 15 }}
+                    style={styles.modalCancelButton}
                   >
-                    <Text style={{ color: "#FF7A45", fontWeight: "600" }}>
-                      Cancel
-                    </Text>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
                   </TouchableOpacity>
                 </View>
               </View>
