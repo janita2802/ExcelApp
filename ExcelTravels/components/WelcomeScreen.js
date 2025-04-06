@@ -92,12 +92,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
+    paddingVertical: 20,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
     minHeight: windowHeight, // Ensure minimum height of the screen
-    paddingVertical: 20,
+    // paddingVertical: 20,
   },
   content: {
     paddingHorizontal: 40,

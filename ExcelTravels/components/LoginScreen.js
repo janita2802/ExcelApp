@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
@@ -13,61 +13,81 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from "react-native";
+
+// Import translations
+import enTranslations from "../locales/en.json";
+import hiTranslations from "../locales/hi.json";
+
+const translations = {
+  en: enTranslations,
+  hi: hiTranslations,
+  // Default to English if translation is missing
+  default: enTranslations,
+};
 
 const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { currentLanguage } = useLanguage();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State for form fields
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isUsernameFocused, setIsUsernameFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
+  // Modal states
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
-
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const translations = {
-    en: {
-      welcome: "Welcome",
-      // other English texts
-    },
-    es: {
-      welcome: "Bienvenido",
-      // other Spanish texts
-    },
-    hi: {
-      welcome: "स्वागत हे",
-      // other Hindi texts
-    },
+  // Safe translation function
+  const t = (key) => {
+    const lang = translations[currentLanguage] || translations.default;
+    return lang[key] || key;
   };
+
+  useEffect(() => {
+    setIsLoading(false);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   const handleLogin = () => {
     if (username && password) {
       navigation.navigate("Welcome");
     } else {
-      Alert.alert("Error", "Please enter both username and password");
+      Alert.alert(t("loginErrorAlertTitle"), t("loginErrorAlertMessage"));
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : null}
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+      style={[styles.container, { backgroundColor: theme.background }]}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
     >
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          { backgroundColor: theme.background },
-        ]}
+        contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        // scrollEnabled={false}
       >
         <View style={styles.content}>
           {/* Logo */}
@@ -77,14 +97,12 @@ const LoginScreen = ({ navigation }) => {
 
           {/* Heading Group */}
           <View style={styles.headingGroup}>
-            <Text style={{ color: theme.text }}></Text>
             <Text style={[styles.heading, { color: theme.text }]}>
-              {translations[currentLanguage].welcome}
-              {/* EXCEL VENDOR */}
+              {t("EXCELVENDOR")}
             </Text>
             <View style={styles.headingUnderline} />
             <Text style={[styles.motto, { color: theme.text }]}>
-              Travel at its finest
+              {t("travelMotto")}
             </Text>
           </View>
 
@@ -92,7 +110,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formContainer}>
             <TextInput
               style={[styles.input, isUsernameFocused && styles.inputFocused]}
-              placeholder="Username"
+              placeholder={t("usernamePlaceholder")}
               placeholderTextColor="#A1A1A1"
               value={username}
               onChangeText={setUsername}
@@ -105,7 +123,7 @@ const LoginScreen = ({ navigation }) => {
 
             <TextInput
               style={[styles.input, isPasswordFocused && styles.inputFocused]}
-              placeholder="Password"
+              placeholder={t("passwordPlaceholder")}
               placeholderTextColor="#A1A1A1"
               value={password}
               onChangeText={setPassword}
@@ -117,8 +135,11 @@ const LoginScreen = ({ navigation }) => {
               style={styles.forgotPasswordButton}
               onPress={() => setShowForgotModal(true)}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={styles.forgotPasswordText}>
+                {t("forgotPassword")}
+              </Text>
             </TouchableOpacity>
+
             <Modal
               animationType="slide"
               transparent={true}
@@ -128,17 +149,19 @@ const LoginScreen = ({ navigation }) => {
               <View style={styles.modalOverlay}>
                 <View style={styles.modalContainer}>
                   <Text style={styles.modalTitle}>
-                    {otpSent ? "Enter OTP" : "Forgot Password"}
+                    {otpSent ? t("enterOtpTitle") : t("forgotPasswordTitle")}
                   </Text>
 
                   <View style={styles.modalContent}>
                     {!otpSent ? (
                       <>
-                        <Text style={styles.modalLabel}>Phone Number</Text>
+                        <Text style={styles.modalLabel}>
+                          {t("phoneNumberLabel")}
+                        </Text>
                         <TextInput
                           style={styles.modalInput}
                           keyboardType="phone-pad"
-                          placeholder="e.g. 9876543210"
+                          placeholder={t("phoneNumberPlaceholder")}
                           value={phoneNumber}
                           onChangeText={setPhoneNumber}
                           maxLength={10}
@@ -148,29 +171,31 @@ const LoginScreen = ({ navigation }) => {
                           onPress={() => {
                             if (!phoneNumber.match(/^\d{10}$/)) {
                               Alert.alert(
-                                "Invalid",
-                                "Enter a valid 10-digit phone number"
+                                t("invalidPhoneAlertTitle"),
+                                t("invalidPhoneAlertMessage")
                               );
                               return;
                             }
                             setOtpSent(true);
                             Alert.alert(
-                              "OTP Sent",
-                              `OTP sent to ${phoneNumber}`
+                              t("otpSentAlertTitle"),
+                              `${t("otpSentAlertMessage")}${phoneNumber}`
                             );
                             setPhoneNumber("");
                           }}
                         >
-                          <Text style={styles.modalButtonText}>Send OTP</Text>
+                          <Text style={styles.modalButtonText}>
+                            {t("sendOtp")}
+                          </Text>
                         </TouchableOpacity>
                       </>
                     ) : (
                       <>
-                        <Text style={styles.modalLabel}>OTP</Text>
+                        <Text style={styles.modalLabel}>{t("otpLabel")}</Text>
                         <TextInput
                           style={styles.modalInput}
                           keyboardType="numeric"
-                          placeholder="Enter OTP"
+                          placeholder={t("otpPlaceholder")}
                           value={otp}
                           onChangeText={setOtp}
                           maxLength={4}
@@ -184,11 +209,16 @@ const LoginScreen = ({ navigation }) => {
                               setOtp("");
                               setOtpSent(false);
                             } else {
-                              Alert.alert("Error", "Invalid OTP");
+                              Alert.alert(
+                                t("invalidOtpAlertTitle"),
+                                t("invalidOtpAlertMessage")
+                              );
                             }
                           }}
                         >
-                          <Text style={styles.modalButtonText}>Verify OTP</Text>
+                          <Text style={styles.modalButtonText}>
+                            {t("verifyOtp")}
+                          </Text>
                         </TouchableOpacity>
                       </>
                     )}
@@ -202,7 +232,7 @@ const LoginScreen = ({ navigation }) => {
                     }}
                     style={styles.modalCancelButton}
                   >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
+                    <Text style={styles.modalCancelText}>{t("cancel")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -216,22 +246,28 @@ const LoginScreen = ({ navigation }) => {
             >
               <View style={styles.modalOverlay}>
                 <View style={styles.modalContainer}>
-                  <Text style={styles.modalTitle}>Reset Password</Text>
+                  <Text style={styles.modalTitle}>
+                    {t("resetPasswordTitle")}
+                  </Text>
 
                   <View style={styles.modalContent}>
-                    <Text style={styles.modalLabel}>New Password</Text>
+                    <Text style={styles.modalLabel}>
+                      {t("newPasswordLabel")}
+                    </Text>
                     <TextInput
                       style={styles.modalInput}
-                      placeholder="New Password"
+                      placeholder={t("newPasswordPlaceholder")}
                       secureTextEntry
                       value={newPassword}
                       onChangeText={setNewPassword}
                     />
 
-                    <Text style={styles.modalLabel}>Confirm Password</Text>
+                    <Text style={styles.modalLabel}>
+                      {t("confirmPasswordLabel")}
+                    </Text>
                     <TextInput
                       style={styles.modalInput}
-                      placeholder="Confirm Password"
+                      placeholder={t("confirmPasswordPlaceholder")}
                       secureTextEntry
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
@@ -241,22 +277,33 @@ const LoginScreen = ({ navigation }) => {
                       style={styles.modalButton}
                       onPress={() => {
                         if (!newPassword || !confirmPassword) {
-                          Alert.alert("Error", "Fill in all fields");
+                          Alert.alert(
+                            t("emptyFieldsAlertTitle"),
+                            t("emptyFieldsAlertMessage")
+                          );
                           return;
                         }
 
                         if (newPassword !== confirmPassword) {
-                          Alert.alert("Error", "Passwords do not match");
+                          Alert.alert(
+                            t("passwordMismatchAlertTitle"),
+                            t("passwordMismatchAlertMessage")
+                          );
                           return;
                         }
 
-                        Alert.alert("Success", "Password reset successfully");
+                        Alert.alert(
+                          t("passwordResetSuccessAlertTitle"),
+                          t("passwordResetSuccessAlertMessage")
+                        );
                         setNewPassword("");
                         setConfirmPassword("");
                         setShowResetModal(false);
                       }}
                     >
-                      <Text style={styles.modalButtonText}>Reset Password</Text>
+                      <Text style={styles.modalButtonText}>
+                        {t("resetPassword")}
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
@@ -264,7 +311,7 @@ const LoginScreen = ({ navigation }) => {
                     onPress={() => setShowResetModal(false)}
                     style={styles.modalCancelButton}
                   >
-                    <Text style={styles.modalCancelText}>Cancel</Text>
+                    <Text style={styles.modalCancelText}>{t("cancel")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -277,7 +324,7 @@ const LoginScreen = ({ navigation }) => {
             onPress={handleLogin}
             activeOpacity={0.9}
           >
-            <Text style={styles.loginButtonText}>SIGN IN</Text>
+            <Text style={styles.loginButtonText}>{t("signIn")}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -289,14 +336,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F5F7FA",
+    paddingTop: 100,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingVertical: 20,
-  },
+
   content: {
+    // height: Dimensions.get("window").height, // This ensures fixed height
+    // width: "100%",
     paddingHorizontal: 40,
+    // paddingTop: 40,
+    justifyContent: "center",
   },
   logoContainer: {
     alignSelf: "center",

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Appearance } from "react-native";
 
 const ThemeContext = createContext();
@@ -8,6 +8,7 @@ const lightTheme = {
   text: "#2D3748",
   card: "#FFF7F0",
   accent: "#FF7A45",
+  // button: "#FF7A45", // Added button color for the toggle buttons
 };
 
 const darkTheme = {
@@ -15,21 +16,43 @@ const darkTheme = {
   text: "#F5F7FA",
   card: "#2A2A2A",
   accent: "#FF7A45",
+  // button: "#FF7A45", // Added button color for the toggle buttons
 };
 
 export const ThemeProvider = ({ children }) => {
-  const colorScheme = Appearance.getColorScheme();
-  const [isDark, setIsDark] = useState(colorScheme === "dark");
+  const [isDarkTheme, setIsDarkTheme] = useState(
+    Appearance.getColorScheme() === "dark"
+  );
 
-  const toggleTheme = () => setIsDark(!isDark);
+  // Listen for system theme changes
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setIsDarkTheme(colorScheme === "dark");
+    });
+    return () => subscription.remove();
+  }, []);
 
-  const theme = isDark ? darkTheme : lightTheme;
+  const toggleTheme = () => setIsDarkTheme(!isDarkTheme);
+
+  const theme = isDarkTheme ? darkTheme : lightTheme;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        toggleTheme,
+        isDarkTheme, // Make sure to provide this value
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 };
 
-export const useTheme = () => useContext(ThemeContext);
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
+};
