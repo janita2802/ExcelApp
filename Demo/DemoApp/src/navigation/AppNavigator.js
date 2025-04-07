@@ -8,6 +8,9 @@ import MainScreen from "../components/Screens/MainScreen";
 import DutySlipInfoScreen from "../components/Screens/DutySlipInfoScreen";
 import TripLogScreen from "../components/Screens/TripLogScreen";
 
+import ProfileInfo from "../components/Profile/ProfileInfo";
+import DutyHistory from "../components/Profile/DutyHistory";
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -21,6 +24,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="DutySlipInfo" component={DutySlipInfoScreen} />
         <Stack.Screen name="SignatureScreen" component={TripLogScreen} />
+        <Stack.Screen name="Profile" component={ProfileInfo} />
+        <Stack.Screen name="History" component={DutyHistory} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -18,7 +18,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
     {
       title: "Personal Information",
       icon: "person-outline",
-      screen: "PersonalInfo",
+      screen: "Profile",
     },
     {
       title: "Duty History",

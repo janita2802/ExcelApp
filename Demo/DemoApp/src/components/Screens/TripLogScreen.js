@@ -15,7 +15,7 @@ import {
   PermissionsAndroid,
   KeyboardAvoidingView,
 } from "react-native";
-import { launchCamera, launchImageLibrary } from "react-native-image-picker";
+import * as ImagePicker from "expo-image-picker";
 import SignatureScreen from "react-native-signature-canvas";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
@@ -105,69 +105,51 @@ const TripLogScreen = ({ navigation, route }) => {
   };
 
   const handleTakePhoto = async () => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      Alert.alert(
-        "Permission required",
-        "Camera permission is needed to take photos"
-      );
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Permission required", "Camera access is needed");
       return;
     }
 
-    const options = {
-      mediaType: "photo",
-      quality: 0.8,
-      saveToPhotos: true,
-      cameraType: "back",
-      includeBase64: false,
-    };
-
-    launchCamera(options, (response) => {
-      if (response.didCancel) {
-        console.log("User cancelled camera");
-      } else if (response.errorCode) {
-        Alert.alert("Error", response.errorMessage || "Camera error occurred");
-      } else if (response.assets && response.assets.length > 0) {
-        const uri = response.assets[0].uri;
-        if (currentImageType === "start") {
-          setStartKmImage(uri);
-        } else {
-          setEndKmImage(uri);
-        }
-      }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
     });
+
+    if (!result.canceled && result.assets) {
+      const uri = result.assets[0].uri;
+      if (currentImageType === "start") {
+        setStartKmImage(uri);
+      } else {
+        setEndKmImage(uri);
+      }
+    }
   };
 
   const handleSelectFromGallery = async () => {
-    const hasPermission = await requestGalleryPermission();
-    if (!hasPermission) {
-      Alert.alert(
-        "Permission required",
-        "Storage permission is needed to access photos"
-      );
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Permission required", "Gallery access is needed");
       return;
     }
 
-    const options = {
-      mediaType: "photo",
-      quality: 0.8,
-      includeBase64: false,
-    };
-
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel) {
-        console.log("User cancelled image picker");
-      } else if (response.errorCode) {
-        Alert.alert("Error", response.errorMessage || "Image picker error");
-      } else if (response.assets && response.assets.length > 0) {
-        const uri = response.assets[0].uri;
-        if (currentImageType === "start") {
-          setStartKmImage(uri);
-        } else {
-          setEndKmImage(uri);
-        }
-      }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
     });
+
+    if (!result.canceled && result.assets) {
+      const uri = result.assets[0].uri;
+      if (currentImageType === "start") {
+        setStartKmImage(uri);
+      } else {
+        setEndKmImage(uri);
+      }
+    }
   };
 
   const handleSaveSignature = () => {
