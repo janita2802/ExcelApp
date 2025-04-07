@@ -12,7 +12,7 @@ import {
   SafeAreaView,
   Modal,
   Platform,
-  PermissionsAndroid,
+  Keyboard,
   KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -34,7 +34,9 @@ const TripLogScreen = ({ navigation, route }) => {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [currentImageType, setCurrentImageType] = useState(null);
   const [isSignatureSaved, setIsSignatureSaved] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const signatureRef = useRef();
+  const scrollViewRef = useRef();
 
   const dutyInfo = route.params?.dutyInfo || {
     id: "DS-12345",
@@ -43,60 +45,33 @@ const TripLogScreen = ({ navigation, route }) => {
   };
 
   useEffect(() => {
-    // Update signature saved status when signature changes
-    setIsSignatureSaved(!!signature);
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (signature) {
+      setIsSignatureSaved(true);
+    }
   }, [signature]);
 
   const handleLogout = () => {
     navigation.navigate("Login");
-  };
-
-  const requestCameraPermission = async () => {
-    if (Platform.OS === "android") {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          {
-            title: "Camera Permission",
-            message: "App needs access to your camera",
-            buttonNeutral: "Ask Me Later",
-            buttonNegative: "Cancel",
-            buttonPositive: "OK",
-          }
-        );
-        if (Platform.Version >= 33) {
-          const photoGranted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-          );
-          return (
-            granted === PermissionsAndroid.RESULTS.GRANTED &&
-            photoGranted === PermissionsAndroid.RESULTS.GRANTED
-          );
-        }
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const requestGalleryPermission = async () => {
-    if (Platform.OS === "android") {
-      try {
-        const granted = await PermissionsAndroid.request(
-          Platform.Version >= 33
-            ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
-            : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
   };
 
   const handleImageSelection = (type) => {
@@ -157,11 +132,9 @@ const TripLogScreen = ({ navigation, route }) => {
   };
 
   const handleSavedSignature = (signatureResult) => {
-    if (signatureResult) {
-      setSignature(signatureResult.encoded);
-      setIsSignatureSaved(true);
-      Alert.alert("Success", "Signature saved successfully");
-    }
+    setSignature(signatureResult);
+    setIsSignatureSaved(true);
+    Alert.alert("Success", "Signature saved successfully");
   };
 
   const handleClearSignature = () => {
@@ -172,38 +145,42 @@ const TripLogScreen = ({ navigation, route }) => {
 
   const allStepsCompleted = () => {
     return (
-      (startKmImage || manualStartKm) &&
+      startKmImage &&
+      manualStartKm &&
       isSignatureSaved &&
-      (endKmImage || manualEndKm)
+      endKmImage &&
+      manualEndKm
     );
   };
 
   const handleCompleteStep = () => {
     switch (activeTab) {
       case "startKm":
-        if (startKmImage || manualStartKm) {
+        if (startKmImage && manualStartKm) {
           setActiveTab("customerSign");
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         } else {
           Alert.alert(
             "Required",
-            "Please capture start KM photo or enter manually"
+            "Both odometer image and manual entry are required for start KM"
           );
         }
         break;
       case "customerSign":
         if (isSignatureSaved) {
           setActiveTab("endKm");
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         } else {
           Alert.alert("Required", "Please save customer signature first");
         }
         break;
       case "endKm":
-        if (endKmImage || manualEndKm) {
-          // All steps completed, show completion options
+        if (endKmImage && manualEndKm) {
+          // All steps completed
         } else {
           Alert.alert(
             "Required",
-            "Please capture end KM photo or enter manually"
+            "Both odometer image and manual entry are required for end KM"
           );
         }
         break;
@@ -243,223 +220,291 @@ const TripLogScreen = ({ navigation, route }) => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : null}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
-          scrollEnabled={activeTab !== "customerSign"}
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={activeTab !== "customerSign"}
         >
-          <Text style={styles.title}>Trip Log - #{dutySlipId}</Text>
+          <View style={styles.container}>
+            <Text style={styles.title}>Trip Log - #{dutySlipId}</Text>
 
-          {/* Progress Steps */}
-          <View style={styles.stepsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.step,
-                activeTab === "startKm" && styles.activeStep,
-                (startKmImage || manualStartKm) && styles.completedStep,
-              ]}
-              onPress={() => setActiveTab("startKm")}
-            >
-              <Text style={styles.stepText}>Start KM</Text>
-            </TouchableOpacity>
+            {/* Progress Steps */}
+            <View style={styles.stepsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.step,
+                  activeTab === "startKm" && styles.activeStep,
+                  startKmImage && manualStartKm && styles.completedStep,
+                ]}
+                onPress={() => setActiveTab("startKm")}
+              >
+                <Text style={styles.stepText}>Start KM</Text>
+              </TouchableOpacity>
 
-            <View style={styles.stepDivider} />
+              <View style={styles.stepDivider} />
 
-            <TouchableOpacity
-              style={[
-                styles.step,
-                activeTab === "customerSign" && styles.activeStep,
-                isSignatureSaved && styles.completedStep,
-              ]}
-              onPress={() => setActiveTab("customerSign")}
-            >
-              <Text style={styles.stepText}>Signature</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.step,
+                  activeTab === "customerSign" && styles.activeStep,
+                  isSignatureSaved && styles.completedStep,
+                ]}
+                onPress={() => setActiveTab("customerSign")}
+              >
+                <Text style={styles.stepText}>Signature</Text>
+              </TouchableOpacity>
 
-            <View style={styles.stepDivider} />
+              <View style={styles.stepDivider} />
 
-            <TouchableOpacity
-              style={[
-                styles.step,
-                activeTab === "endKm" && styles.activeStep,
-                (endKmImage || manualEndKm) && styles.completedStep,
-              ]}
-              onPress={() => setActiveTab("endKm")}
-            >
-              <Text style={styles.stepText}>End KM</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                style={[
+                  styles.step,
+                  activeTab === "endKm" && styles.activeStep,
+                  endKmImage && manualEndKm && styles.completedStep,
+                ]}
+                onPress={() => setActiveTab("endKm")}
+              >
+                <Text style={styles.stepText}>End KM</Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Start KM Section */}
-          {activeTab === "startKm" && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Starting Kilometer</Text>
+            {/* Start KM Section */}
+            {activeTab === "startKm" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Starting Kilometer</Text>
 
-              <View style={styles.imageOptionsContainer}>
-                <TouchableOpacity
-                  style={[styles.imageOptionButton, styles.captureButton]}
-                  onPress={() => handleImageSelection("start")}
-                >
-                  <Text style={styles.buttonText}>Add Odometer Image</Text>
-                </TouchableOpacity>
-              </View>
-
-              {startKmImage && (
-                <View style={styles.imagePreviewContainer}>
-                  <Image
-                    source={{ uri: startKmImage }}
-                    style={styles.imagePreview}
-                    resizeMode="contain"
-                  />
+                <View style={styles.imageOptionsContainer}>
                   <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => setStartKmImage(null)}
+                    style={[
+                      styles.imageOptionButton,
+                      styles.captureButton,
+                      !startKmImage && styles.requiredField,
+                    ]}
+                    onPress={() => handleImageSelection("start")}
                   >
-                    <Text style={styles.removeImageText}>✕</Text>
+                    <Text style={styles.buttonText}>
+                      {startKmImage
+                        ? "Odometer Image Added"
+                        : "Add Odometer Image*"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
-              )}
 
-              <Text style={styles.orText}>OR</Text>
+                {startKmImage && (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: startKmImage }}
+                      style={styles.imagePreview}
+                      resizeMode="contain"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setStartKmImage(null)}
+                    >
+                      <Text style={styles.removeImageText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-              <TextInput
-                style={styles.input}
-                placeholder="Enter KM manually"
-                placeholderTextColor="#999"
-                value={manualStartKm}
-                onChangeText={setManualStartKm}
-                keyboardType="numeric"
-                returnKeyType="done"
-              />
-            </View>
-          )}
+                <Text style={styles.orText}>AND</Text>
 
-          {/* Customer Signature Section */}
-          {activeTab === "customerSign" && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Customer Signature</Text>
-
-              <View style={styles.signatureContainer}>
-                <SignatureScreen
-                  ref={signatureRef}
-                  onOK={handleSavedSignature}
-                  onEmpty={() => {
-                    setSignature(null);
-                    setIsSignatureSaved(false);
-                  }}
-                  descriptionText="Sign above"
-                  clearText="Clear"
-                  confirmText="Save"
-                  webStyle={`.m-signature-pad {background-color: #fff; border: none; box-shadow: none;}`}
-                  style={styles.signaturePad}
-                  autoClear={false}
-                  backgroundColor="white"
-                  penColor="black"
+                <TextInput
+                  style={[styles.input, !manualStartKm && styles.requiredField]}
+                  placeholder="Enter KM manually*"
+                  placeholderTextColor="#999"
+                  value={manualStartKm}
+                  onChangeText={setManualStartKm}
+                  keyboardType="numeric"
+                  returnKeyType="done"
                 />
               </View>
+            )}
 
-              <View style={styles.signatureButtons}>
-                <TouchableOpacity
-                  style={[styles.signatureButton, styles.clearButton]}
-                  onPress={handleClearSignature}
-                >
-                  <Text style={styles.signatureButtonText}>Clear</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.signatureButton, styles.saveButton]}
-                  onPress={handleSaveSignature}
-                >
-                  <Text style={styles.signatureButtonText}>Save Signature</Text>
-                </TouchableOpacity>
-              </View>
+            {/* Customer Signature Section */}
+            {activeTab === "customerSign" && (
+              <View style={styles.signatureSection}>
+                <Text style={styles.sectionTitle}>Customer Signature</Text>
 
-              {signature && (
-                <View style={styles.signaturePreviewContainer}>
-                  <Text style={styles.previewLabel}>Signature Preview:</Text>
-                  <Image
-                    source={{ uri: `data:image/png;base64,${signature}` }}
-                    style={styles.signaturePreview}
-                    resizeMode="contain"
+                <View style={styles.signatureContainer}>
+                  <SignatureScreen
+                    ref={signatureRef}
+                    onOK={handleSavedSignature}
+                    onEmpty={() => {
+                      setSignature(null);
+                      setIsSignatureSaved(false);
+                    }}
+                    descriptionText="Sign above"
+                    clearText="Clear"
+                    confirmText="Save"
+                    webStyle={`.m-signature-pad {background-color: #fff; border: none; box-shadow: none;}`}
+                    style={styles.signaturePad}
+                    autoClear={false}
+                    backgroundColor="white"
+                    penColor="black"
                   />
                 </View>
-              )}
-            </View>
-          )}
 
-          {/* End KM Section */}
-          {activeTab === "endKm" && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Ending Kilometer</Text>
-
-              <View style={styles.imageOptionsContainer}>
-                <TouchableOpacity
-                  style={[styles.imageOptionButton, styles.captureButton]}
-                  onPress={() => handleImageSelection("end")}
-                >
-                  <Text style={styles.buttonText}>Add Odometer Image</Text>
-                </TouchableOpacity>
-              </View>
-
-              {endKmImage && (
-                <View style={styles.imagePreviewContainer}>
-                  <Image
-                    source={{ uri: endKmImage }}
-                    style={styles.imagePreview}
-                    resizeMode="contain"
-                  />
+                <View style={styles.signatureButtons}>
                   <TouchableOpacity
-                    style={styles.removeImageButton}
-                    onPress={() => setEndKmImage(null)}
+                    style={[styles.signatureButton, styles.clearButton]}
+                    onPress={handleClearSignature}
                   >
-                    <Text style={styles.removeImageText}>✕</Text>
+                    <Text style={styles.signatureButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.signatureButton, styles.saveButton]}
+                    onPress={handleSaveSignature}
+                  >
+                    <Text style={styles.signatureButtonText}>
+                      Save Signature
+                    </Text>
                   </TouchableOpacity>
                 </View>
-              )}
 
-              <Text style={styles.orText}>OR</Text>
+                {/* {isSignatureSaved && signature && (
+                  <View style={styles.signaturePreviewContainer}>
+                    <Text style={styles.previewLabel}>Signature Preview:</Text>
+                    <Image
+                      source={{ uri: `data:image/png;base64,${signature}` }}
+                      style={styles.signaturePreview}
+                      resizeMode="contain"
+                    />
+                  </View>
+                )} */}
+              </View>
+            )}
 
-              <TextInput
-                style={styles.input}
-                placeholder="Enter KM manually"
-                placeholderTextColor="#999"
-                value={manualEndKm}
-                onChangeText={setManualEndKm}
-                keyboardType="numeric"
-                returnKeyType="done"
-              />
-            </View>
-          )}
+            {/* End KM Section */}
+            {activeTab === "endKm" && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Ending Kilometer</Text>
 
-          {activeTab === "endKm" && allStepsCompleted() ? (
-            <View style={styles.completionButtons}>
+                <View style={styles.imageOptionsContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.imageOptionButton,
+                      styles.captureButton,
+                      !endKmImage && styles.requiredField,
+                    ]}
+                    onPress={() => handleImageSelection("end")}
+                  >
+                    <Text style={styles.buttonText}>
+                      {endKmImage
+                        ? "Odometer Image Added"
+                        : "Add Odometer Image*"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {endKmImage && (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: endKmImage }}
+                      style={styles.imagePreview}
+                      resizeMode="contain"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setEndKmImage(null)}
+                    >
+                      <Text style={styles.removeImageText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <Text style={styles.orText}>AND</Text>
+
+                <TextInput
+                  style={[styles.input, !manualEndKm && styles.requiredField]}
+                  placeholder="Enter KM manually*"
+                  placeholderTextColor="#999"
+                  value={manualEndKm}
+                  onChangeText={setManualEndKm}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                />
+              </View>
+            )}
+          </View>
+          <View style={styles.actionButtonsContainer}>
+            {activeTab !== "endKm" ? (
               <TouchableOpacity
-                style={[styles.actionButton, styles.previewButton]}
-                onPress={() => setShowPreview(true)}
+                style={styles.nextButton}
+                onPress={handleCompleteStep}
               >
-                <Text style={styles.buttonText}>PREVIEW TRIP</Text>
+                <Text style={styles.buttonText}>NEXT STEP</Text>
               </TouchableOpacity>
+            ) : allStepsCompleted() ? (
+              <View style={styles.completionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.previewButton]}
+                  onPress={() => setShowPreview(true)}
+                >
+                  <Text style={styles.buttonText}>PREVIEW TRIP</Text>
+                </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.completeButton]}
+                  onPress={submitTripData}
+                >
+                  <Text style={styles.buttonText}>COMPLETE TRIP</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <TouchableOpacity
-                style={[styles.actionButton, styles.completeButton]}
-                onPress={submitTripData}
+                style={[styles.nextButton, styles.disabledButton]}
+                disabled={true}
               >
-                <Text style={styles.buttonText}>COMPLETE TRIP</Text>
+                <Text style={styles.buttonText}>
+                  COMPLETE ALL FIELDS TO CONTINUE
+                </Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.nextButton}
-              onPress={handleCompleteStep}
-            >
-              <Text style={styles.buttonText}>
-                {activeTab === "endKm" ? "FINISH TRIP" : "NEXT STEP"}
-              </Text>
-            </TouchableOpacity>
-          )}
+            )}
+          </View>
         </ScrollView>
+
+        {/* Action Buttons - Positioned outside ScrollView */}
+        {/* {!keyboardVisible && (
+          <View style={styles.actionButtonsContainer}>
+            {activeTab !== "endKm" ? (
+              <TouchableOpacity
+                style={styles.nextButton}
+                onPress={handleCompleteStep}
+              >
+                <Text style={styles.buttonText}>NEXT STEP</Text>
+              </TouchableOpacity>
+            ) : allStepsCompleted() ? (
+              <View style={styles.completionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.previewButton]}
+                  onPress={() => setShowPreview(true)}
+                >
+                  <Text style={styles.buttonText}>PREVIEW TRIP</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.completeButton]}
+                  onPress={submitTripData}
+                >
+                  <Text style={styles.buttonText}>COMPLETE TRIP</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.nextButton, styles.disabledButton]}
+                disabled={true}
+              >
+                <Text style={styles.buttonText}>
+                  COMPLETE ALL FIELDS TO CONTINUE
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )} */}
       </KeyboardAvoidingView>
 
       {/* Image Picker Modal */}
@@ -516,17 +561,16 @@ const TripLogScreen = ({ navigation, route }) => {
             {/* Start KM Preview */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Start KM</Text>
-              {startKmImage ? (
+              {startKmImage && (
                 <Image
                   source={{ uri: startKmImage }}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
-              ) : (
-                <Text style={styles.previewText}>
-                  Manual Entry: {manualStartKm} km
-                </Text>
               )}
+              <Text style={styles.previewText}>
+                Manual Entry: {manualStartKm} km
+              </Text>
             </View>
 
             {/* Signature Preview */}
@@ -544,17 +588,16 @@ const TripLogScreen = ({ navigation, route }) => {
             {/* End KM Preview */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>End KM</Text>
-              {endKmImage ? (
+              {endKmImage && (
                 <Image
                   source={{ uri: endKmImage }}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
-              ) : (
-                <Text style={styles.previewText}>
-                  Manual Entry: {manualEndKm} km
-                </Text>
               )}
+              <Text style={styles.previewText}>
+                Manual Entry: {manualEndKm} km
+              </Text>
             </View>
           </ScrollView>
 
@@ -596,10 +639,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  container: {
+  scrollContainer: {
     flexGrow: 1,
+    paddingBottom: 120, // Extra space for buttons
+  },
+  container: {
     padding: 20,
-    paddingBottom: 80,
   },
   title: {
     fontSize: 24,
@@ -643,8 +688,24 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: "#ccc",
   },
-  section: {
-    marginBottom: 30,
+  // section: {
+  //   marginBottom: 30,
+  // },
+  signatureSection: {
+    marginBottom: 10,
+  },
+  signatureContainer: {
+    height: 200, // Increased height for better signing area
+    borderWidth: 1,
+    borderColor: "#800000",
+    borderRadius: 8,
+    marginBottom: 15,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  signaturePad: {
+    flex: 1,
+    borderWidth: 0,
   },
   sectionTitle: {
     fontSize: 18,
@@ -716,23 +777,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 15,
   },
-  signatureContainer: {
-    height: 250,
-    borderWidth: 1,
-    borderColor: "#800000",
-    borderRadius: 8,
-    marginBottom: 15,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  signaturePad: {
-    flex: 1,
-    borderWidth: 0,
+  requiredField: {
+    borderColor: "#f44336",
+    borderWidth: 2,
   },
   signatureButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
   },
   signatureButton: {
     padding: 12,
@@ -743,10 +794,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   clearButton: {
-    backgroundColor: "#8B0000", // firebrick
+    backgroundColor: "#8B0000",
   },
   saveButton: {
-    backgroundColor: "#6B8E23", // olive drab
+    backgroundColor: "#6B8E23",
   },
   signatureButtonText: {
     color: "#fff",
@@ -769,16 +820,26 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: "#f5f5f5",
   },
+  actionButtonsContainer: {
+    // position: "absolute",
+    // bottom: 60,
+    // left: 0,
+    // right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    backgroundColor: "#fff",
+  },
   nextButton: {
     backgroundColor: "#800000",
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
+  },
+  disabledButton: {
+    backgroundColor: "#cccccc",
   },
   completionButtons: {
-    marginTop: 20,
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -794,9 +855,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
   },
   completeButton: {
-    backgroundColor: "#8B0000", // dark red
+    backgroundColor: "#8B0000",
   },
-
   // Image Picker Modal Styles
   imagePickerModal: {
     flex: 1,
@@ -834,7 +894,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#f44336",
   },
-
   // Modal Styles
   modalContainer: {
     flex: 1,
