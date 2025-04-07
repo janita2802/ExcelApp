@@ -25,7 +25,8 @@
     "react-native-signature-canvas": "^4.7.2",
     "react-native-signature-capture": "^0.4.12",
     "react-native-vector-icons": "^10.2.0",
-    "react-native-web": "^0.20.0"
+    "react-native-web": "^0.20.0",
+    "expo-file-system": "~18.0.12"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

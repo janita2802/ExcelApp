@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import SignatureScreen from "react-native-signature-canvas";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
@@ -131,10 +132,23 @@ const TripLogScreen = ({ navigation, route }) => {
     signatureRef.current?.readSignature();
   };
 
-  const handleSavedSignature = (signatureResult) => {
-    setSignature(signatureResult);
-    setIsSignatureSaved(true);
-    Alert.alert("Success", "Signature saved successfully");
+  const handleSavedSignature = async (signatureResult) => {
+    try {
+      if (!signatureResult) {
+        throw new Error("No signature data received.");
+      }
+
+      const base64Signature = signatureResult.replace(
+        "data:image/png;base64,",
+        ""
+      );
+      setSignature(base64Signature);
+      setIsSignatureSaved(true);
+      Alert.alert("Success", "Signature saved successfully");
+    } catch (error) {
+      console.error("Error saving signature:", error);
+      Alert.alert("Error", "Failed to save signature");
+    }
   };
 
   const handleClearSignature = () => {
@@ -189,6 +203,7 @@ const TripLogScreen = ({ navigation, route }) => {
 
   const submitTripData = async () => {
     try {
+      console.log("Current signature state:", signature);
       const tripData = {
         dutySlipId,
         startKm: {
@@ -342,9 +357,10 @@ const TripLogScreen = ({ navigation, route }) => {
                     confirmText="Save"
                     webStyle={`.m-signature-pad {background-color: #fff; border: none; box-shadow: none;}`}
                     style={styles.signaturePad}
-                    autoClear={false}
+                    autoClear={false} // Important: prevents automatic clearing
                     backgroundColor="white"
                     penColor="black"
+                    imageType="image/png" // Ensure we're getting PNG format
                   />
                 </View>
 
@@ -573,15 +589,17 @@ const TripLogScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* Signature Preview */}
+            {/* Signature Preview in Modal */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Customer Signature</Text>
-              {signature && (
+              {signature ? (
                 <Image
                   source={{ uri: `data:image/png;base64,${signature}` }}
                   style={styles.signaturePreview}
                   resizeMode="contain"
                 />
+              ) : (
+                <Text style={styles.previewText}>No signature saved</Text>
               )}
             </View>
 
