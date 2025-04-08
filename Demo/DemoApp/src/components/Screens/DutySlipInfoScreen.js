@@ -22,9 +22,8 @@ const { width } = Dimensions.get("window");
 
 const DutySlipInfoScreen = ({ navigation, route }) => {
   const [menuVisible, setMenuVisible] = useState(false);
-  //   const { dutySlipId } = route.params;
-  const { dutySlipId } = 1111;
   const submitted = true;
+  const { dutySlipData } = route.params;
 
   const handleLogout = () => {
     navigation.navigate("Login");
@@ -34,33 +33,16 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
       address
     )}`;
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        console.log("Don't know how to open URI: " + url);
-      }
-    });
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Error", "Could not open maps")
+    );
   };
 
   const handlePhonePress = (phoneNumber) => {
     const url = `tel:${phoneNumber}`;
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Alert.alert("Error", "Phone calls are not supported on this device");
-      }
-    });
-  };
-
-  const mockDutyInfo = {
-    party: "Mr. John Doe",
-    address: "123 Main Street, Mumbai, MH 400001",
-    contact: "+91 9876543210",
-    id: dutySlipId,
-    category: "Sedan AC",
-    pickupTime: "10:30 AM, 4th April 2025",
+    Linking.openURL(url).catch(() =>
+      Alert.alert("Error", "Could not make phone call")
+    );
   };
 
   return (
@@ -78,16 +60,16 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>Duty Information</Text>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Duty Slip ID:</Text>
-                  <Text style={styles.infoValue}>{mockDutyInfo.id}</Text>
+                  <Text style={styles.infoValue}>{dutySlipData.id}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Category:</Text>
-                  <Text style={styles.infoValue}>{mockDutyInfo.category}</Text>
+                  <Text style={styles.infoValue}>{dutySlipData.category}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Pickup Time:</Text>
                   <Text style={styles.infoValue}>
-                    {mockDutyInfo.pickupTime}
+                    {dutySlipData.pickupTime}
                   </Text>
                 </View>
 
@@ -96,10 +78,9 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>Customer Information</Text>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Party:</Text>
-                  <Text style={styles.infoValue}>{mockDutyInfo.party}</Text>
+                  <Text style={styles.infoValue}>{dutySlipData.party}</Text>
                 </View>
 
-                {/* Enhanced Address Field */}
                 <View style={styles.infoRow}>
                   <View style={styles.iconLabelContainer}>
                     <MaterialIcons
@@ -112,13 +93,13 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                   </View>
                   <TouchableOpacity
                     style={styles.clickableField}
-                    onPress={() => handleAddressPress(mockDutyInfo.address)}
+                    onPress={() => handleAddressPress(dutySlipData.address)}
                   >
                     <Text
                       style={[styles.infoValue, styles.linkText]}
                       numberOfLines={2}
                     >
-                      {mockDutyInfo.address}
+                      {dutySlipData.address}
                     </Text>
                     <MaterialIcons
                       name="directions"
@@ -128,7 +109,6 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Enhanced Phone Field */}
                 <View style={styles.infoRow}>
                   <View style={styles.iconLabelContainer}>
                     <FontAwesome
@@ -141,10 +121,10 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                   </View>
                   <TouchableOpacity
                     style={styles.clickableField}
-                    onPress={() => handlePhonePress(mockDutyInfo.contact)}
+                    onPress={() => handlePhonePress(dutySlipData.contact)}
                   >
                     <Text style={[styles.infoValue, styles.linkText]}>
-                      {mockDutyInfo.contact}
+                      {dutySlipData.contact}
                     </Text>
                     <MaterialIcons name="call" size={20} color="#0066cc" />
                   </TouchableOpacity>
@@ -152,7 +132,11 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
 
                 <TouchableOpacity
                   style={styles.nextButton}
-                  onPress={() => navigation.navigate("SignatureScreen")}
+                  onPress={() =>
+                    navigation.navigate("TripLog", {
+                      dutySlipData: dutySlipData,
+                    })
+                  }
                 >
                   <Text style={styles.nextButtonText}>Next →</Text>
                 </TouchableOpacity>

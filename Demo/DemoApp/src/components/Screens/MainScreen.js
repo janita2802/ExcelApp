@@ -8,23 +8,66 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import axios from "axios";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 
-const MainScreen = ({ navigation }) => {
+const MainScreen = ({ navigation, route }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [dutySlipId, setDutySlipId] = useState("");
   const [dutySlipIdFocused, setDutySlipIdFocused] = useState(false);
-  const [userName] = useState("John Doe"); // Replace with actual user name from your auth state
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Get driver name from route params if available
+  const userName = route.params?.driver?.name || "Driver";
 
   const handleLogout = () => {
     navigation.navigate("Login");
   };
 
-  const handleSubmit = () => {
-    navigation.navigate("DutySlipInfo");
+  const clearInput = () => {
+    setDutySlipId("");
+  };
+
+  const handleSubmit = async () => {
+    if (!dutySlipId.trim()) {
+      Alert.alert("Error", "Please enter a Duty Slip ID");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        `http://192.168.0.9:5000/api/duty-slips/${dutySlipId.trim()}`,
+        { timeout: 10000 }
+      );
+
+      if (response.data) {
+        navigation.navigate("DutySlipInfo", {
+          dutySlipData: response.data,
+          driverName: userName, // Pass driver name to next screen
+        });
+        clearInput();
+      }
+    } catch (error) {
+      let errorMessage = "An error occurred";
+      if (error.response) {
+        errorMessage =
+          error.response.status === 404
+            ? "Duty slip not found"
+            : error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = "Could not connect to server. Check your network.";
+      }
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,56 +79,69 @@ const MainScreen = ({ navigation }) => {
         <Header onMenuPress={() => setMenuVisible(true)} />
 
         <View style={styles.content}>
-          {/* Centered content container */}
           <View style={styles.centeredContent}>
-            {/* Greeting for logged-in user */}
             <Text style={styles.greeting}>Welcome back, {userName}!</Text>
 
-            {/* Form container */}
             <View style={styles.formContainer}>
-              {/* New table component */}
               <View style={styles.table}>
-                {/* Heading Row */}
                 <View style={styles.headingRow}>
                   <Text style={styles.headingCell}>Duty Slip Form</Text>
                 </View>
 
-                {/* Input Row */}
                 <View style={[styles.row, styles.inputRow]}>
                   <View style={styles.cellLeft}>
                     <Text style={styles.label}>Duty Slip ID</Text>
                   </View>
                   <View style={styles.cellRight}>
-                    <TextInput
-                      style={[
-                        styles.input,
-                        dutySlipIdFocused && styles.inputFocused,
-                      ]}
-                      placeholder="Enter Duty Slip ID"
-                      placeholderTextColor="#A1A1A1"
-                      value={dutySlipId}
-                      onChangeText={setDutySlipId}
-                      onFocus={() => setDutySlipIdFocused(true)}
-                      onBlur={() => setDutySlipIdFocused(false)}
-                      keyboardType="default" // Changed from numeric to default for alphanumeric
-                      autoCapitalize="characters" // Auto capitalize for IDs
-                      autoCorrect={false}
-                    />
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          dutySlipIdFocused && styles.inputFocused,
+                        ]}
+                        placeholder="Enter Duty Slip ID"
+                        placeholderTextColor="#A1A1A1"
+                        value={dutySlipId}
+                        onChangeText={setDutySlipId}
+                        onFocus={() => setDutySlipIdFocused(true)}
+                        onBlur={() => setDutySlipIdFocused(false)}
+                        keyboardType="default"
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        onSubmitEditing={handleSubmit}
+                        returnKeyType="search"
+                      />
+                      {dutySlipId.length > 0 && (
+                        <TouchableOpacity
+                          style={styles.clearButton}
+                          onPress={clearInput}
+                        >
+                          <MaterialIcons
+                            name="close"
+                            size={20}
+                            color="#800000"
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
 
-                {/* Submit Button Row */}
                 <View style={styles.buttonRow}>
                   <TouchableOpacity
                     style={[
                       styles.submitButton,
-                      !dutySlipId.trim() && styles.submitButtonDisabled,
+                      (!dutySlipId.trim() || isLoading) &&
+                        styles.submitButtonDisabled,
                     ]}
                     onPress={handleSubmit}
-                    activeOpacity={0.8}
-                    disabled={!dutySlipId.trim()}
+                    disabled={!dutySlipId.trim() || isLoading}
                   >
-                    <Text style={styles.submitButtonText}>SUBMIT</Text>
+                    {isLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>SUBMIT</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -93,20 +149,19 @@ const MainScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <View style={styles.footerContainer}>
-          <Footer />
-        </View>
-
+        <Footer />
         <Menu
-          onSelect={(screen) => navigation.navigate(screen)}
-          onLogout={handleLogout}
           visible={menuVisible}
           onClose={() => setMenuVisible(false)}
+          onLogout={handleLogout}
+          onSelect={(screen) => navigation.navigate(screen)}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
+
+// ... (keep your existing styles)
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -220,6 +275,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     textTransform: "uppercase",
+  },
+  // Add these new styles:
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    backgroundColor: "#FFF",
+    paddingRight: 30, // Make space for the clear button
+  },
+  clearButton: {
+    position: "absolute",
+    right: 10,
+    padding: 5,
   },
 });
 

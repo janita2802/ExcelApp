@@ -2,25 +2,75 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
-const DutyInfoPreview = ({ id, category, pickupTime }) => {
+// import PropTypes from "prop-types";
+
+// DutyInfoPreview.propTypes = {
+//   id: PropTypes.string.isRequired,
+//   category: PropTypes.string.isRequired,
+//   pickupTime: PropTypes.string.isRequired,
+//   party: PropTypes.string,
+//   address: PropTypes.string,
+//   contact: PropTypes.string,
+//   driverName: PropTypes.string,
+//   carNumber: PropTypes.string,
+//   tripRoute: PropTypes.string,
+// };
+
+const DutyInfoPreview = ({
+  id,
+  category,
+  pickupTime,
+  party,
+  address,
+  contact,
+  driverName,
+  carNumber,
+  tripRoute,
+}) => {
   return (
     <View style={styles.container}>
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Duty ID:</Text>
-        <Text style={styles.value}>{id}</Text>
+      <Text style={styles.title}>Duty Slip #{id}</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Trip Details</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Vehicle:</Text>
+          <Text style={styles.value}>
+            {category} ({carNumber})
+          </Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Driver:</Text>
+          <Text style={styles.value}>{driverName}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Pickup Time:</Text>
+          <Text style={styles.value}>{pickupTime}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Route:</Text>
+          <Text style={styles.value}>{tripRoute}</Text>
+        </View>
       </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Category:</Text>
-        <Text style={styles.value}>{category}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Pickup:</Text>
-        <Text style={styles.value}>{pickupTime}</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Customer Details</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Name:</Text>
+          <Text style={styles.value}>{party}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Contact:</Text>
+          <Text style={styles.value}>{contact}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Address:</Text>
+          <Text style={styles.value}>{address}</Text>
+        </View>
       </View>
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#f5f5f5",

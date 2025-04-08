@@ -11,8 +11,10 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import axios from "axios";
 
 const { width, height } = Dimensions.get("window");
 
@@ -91,9 +93,41 @@ const LoginScreen = ({ navigation }) => {
 
   const handleFocus = (inputName) => setFocusedInput(inputName);
   const handleBlur = () => setFocusedInput(null);
-  const handleLogin = () => {
-    resetAllFields(); // Clear all fields before navigation
-    navigation.navigate("Main");
+
+  const handleLogin = async () => {
+    try {
+      // Basic validation
+      if (!username.trim() || !password.trim()) {
+        Alert.alert("Error", "Please enter both username and password");
+        return;
+      }
+
+      const response = await axios.post(
+        "http://192.168.0.9:5000/api/auth/login",
+        {
+          username: username.trim(),
+          password: password.trim(),
+        }
+      );
+
+      if (response.data.message === "Login successful") {
+        resetAllFields();
+        navigation.navigate("Main", {
+          driver: response.data.driver,
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      let errorMessage = "An error occurred during login";
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage = "Could not connect to server";
+      }
+
+      Alert.alert("Error", errorMessage);
+    }
   };
 
   const handleSendOTP = () => {
