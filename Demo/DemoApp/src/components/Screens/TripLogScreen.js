@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import DutyInfoPreview from "./DutyInfoPreview";
+import axios from "axios";
 import {
   View,
   Text,
@@ -14,6 +15,7 @@ import {
   Platform,
   Keyboard,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
@@ -23,7 +25,9 @@ import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 
 const TripLogScreen = ({ navigation, route }) => {
-  const dutySlipId = 11;
+  const { dutySlipData } = route.params;
+  const dutySlipId = dutySlipData?.id || "N/A";
+
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("startKm");
   const [startKmImage, setStartKmImage] = useState(null);
@@ -36,13 +40,25 @@ const TripLogScreen = ({ navigation, route }) => {
   const [currentImageType, setCurrentImageType] = useState(null);
   const [isSignatureSaved, setIsSignatureSaved] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const signatureRef = useRef();
   const scrollViewRef = useRef();
 
-  const dutyInfo = route.params?.dutyInfo || {
-    id: "DS-12345",
-    category: "Sedan AC",
-    pickupTime: "10:30 AM, 4th April 2025",
+  const validateTripData = () => {
+    if (!startKmImage || !manualStartKm) {
+      Alert.alert("Validation Error", "Please provide start KM data");
+      return false;
+    }
+    if (!endKmImage || !manualEndKm) {
+      Alert.alert("Validation Error", "Please provide end KM data");
+      return false;
+    }
+    if (!signature) {
+      Alert.alert("Validation Error", "Please provide customer signature");
+      return false;
+    }
+    return true;
   };
 
   useEffect(() => {
@@ -102,6 +118,7 @@ const TripLogScreen = ({ navigation, route }) => {
         setEndKmImage(uri);
       }
     }
+    setShowImagePicker(false);
   };
 
   const handleSelectFromGallery = async () => {
@@ -126,6 +143,7 @@ const TripLogScreen = ({ navigation, route }) => {
         setEndKmImage(uri);
       }
     }
+    setShowImagePicker(false);
   };
 
   const handleSaveSignature = () => {
@@ -202,30 +220,108 @@ const TripLogScreen = ({ navigation, route }) => {
   };
 
   const submitTripData = async () => {
+    setIsSubmitting(true);
+
+    if (!validateTripData()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      console.log("Current signature state:", signature);
-      const tripData = {
-        dutySlipId,
-        startKm: {
-          image: startKmImage,
-          manualValue: manualStartKm,
-          timestamp: new Date().toISOString(),
-        },
-        customerSignature: signature,
-        endKm: {
-          image: endKmImage,
-          manualValue: manualEndKm,
-          timestamp: new Date().toISOString(),
-        },
-        completedAt: new Date().toISOString(),
+      const getCurrentTime = () => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
       };
 
-      console.log("Submitting trip data:", tripData);
-      Alert.alert("Success", "Trip data submitted successfully!");
-      navigation.navigate("Main");
+      const formData = new FormData();
+
+      // Start KM Image
+      if (startKmImage) {
+        formData.append("startKmImage", {
+          uri: startKmImage,
+          type: "image/jpeg",
+          name: "start_km.jpg",
+        });
+      }
+
+      // End KM Image
+      if (endKmImage) {
+        formData.append("endKmImage", {
+          uri: endKmImage,
+          type: "image/jpeg",
+          name: "end_km.jpg",
+        });
+      }
+
+      // Add signature (as base64 string, since no file uri)
+      if (signature) {
+        formData.append(
+          "customerSignature",
+          `data:image/png;base64,${signature}`
+        );
+      }
+
+      // Add other fields
+      formData.append("manualStartKm", manualStartKm);
+      formData.append("manualEndKm", manualEndKm);
+      formData.append("timestampStart", getCurrentTime());
+      formData.append("timestampEnd", getCurrentTime());
+      formData.append("tollFees", "0");
+      formData.append("parkingFees", "0");
+
+      console.log("📤 Submitting trip data as FormData...");
+
+      const response = await axios.post(
+        `http://192.168.0.9:5000/api/duty-slips/${dutySlipId}/complete`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          maxContentLength: 50 * 1024 * 1024,
+          maxBodyLength: 50 * 1024 * 1024,
+          timeout: 30000,
+        }
+      );
+
+      console.log("✅ API Response:", response.data);
+
+      if (
+        response.data.success ||
+        response.data.message === "Trip data saved successfully"
+      ) {
+        Alert.alert("Success", "Trip data submitted successfully!", [
+          {
+            text: "OK",
+            onPress: () => navigation.navigate("Main"),
+          },
+        ]);
+      } else {
+        throw new Error(
+          response.data.message || "Unexpected response from server"
+        );
+      }
     } catch (error) {
-      console.error("Error submitting trip data:", error);
-      Alert.alert("Error", "Failed to submit trip data. Please try again.");
+      console.error("❌ Submission error:", error);
+
+      let errorMessage = "Failed to submit trip data. Please try again.";
+
+      if (error.response) {
+        errorMessage =
+          error.response.data.message ||
+          `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        errorMessage =
+          "No response from server. Check your network connection.";
+      } else {
+        errorMessage = error.message || "An unexpected error occurred";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -247,7 +343,6 @@ const TripLogScreen = ({ navigation, route }) => {
           <View style={styles.container}>
             <Text style={styles.title}>Trip Log - #{dutySlipId}</Text>
 
-            {/* Progress Steps */}
             <View style={styles.stepsContainer}>
               <TouchableOpacity
                 style={[
@@ -287,7 +382,6 @@ const TripLogScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Start KM Section */}
             {activeTab === "startKm" && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Starting Kilometer</Text>
@@ -339,7 +433,6 @@ const TripLogScreen = ({ navigation, route }) => {
               </View>
             )}
 
-            {/* Customer Signature Section */}
             {activeTab === "customerSign" && (
               <View style={styles.signatureSection}>
                 <Text style={styles.sectionTitle}>Customer Signature</Text>
@@ -357,10 +450,10 @@ const TripLogScreen = ({ navigation, route }) => {
                     confirmText="Save"
                     webStyle={`.m-signature-pad {background-color: #fff; border: none; box-shadow: none;}`}
                     style={styles.signaturePad}
-                    autoClear={false} // Important: prevents automatic clearing
+                    autoClear={false}
                     backgroundColor="white"
                     penColor="black"
-                    imageType="image/png" // Ensure we're getting PNG format
+                    imageType="image/png"
                   />
                 </View>
 
@@ -380,21 +473,9 @@ const TripLogScreen = ({ navigation, route }) => {
                     </Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* {isSignatureSaved && signature && (
-                  <View style={styles.signaturePreviewContainer}>
-                    <Text style={styles.previewLabel}>Signature Preview:</Text>
-                    <Image
-                      source={{ uri: `data:image/png;base64,${signature}` }}
-                      style={styles.signaturePreview}
-                      resizeMode="contain"
-                    />
-                  </View>
-                )} */}
               </View>
             )}
 
-            {/* End KM Section */}
             {activeTab === "endKm" && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Ending Kilometer</Text>
@@ -466,8 +547,13 @@ const TripLogScreen = ({ navigation, route }) => {
                 <TouchableOpacity
                   style={[styles.actionButton, styles.completeButton]}
                   onPress={submitTripData}
+                  disabled={isSubmitting}
                 >
-                  <Text style={styles.buttonText}>COMPLETE TRIP</Text>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>COMPLETE TRIP</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             ) : (
@@ -482,48 +568,8 @@ const TripLogScreen = ({ navigation, route }) => {
             )}
           </View>
         </ScrollView>
-
-        {/* Action Buttons - Positioned outside ScrollView */}
-        {/* {!keyboardVisible && (
-          <View style={styles.actionButtonsContainer}>
-            {activeTab !== "endKm" ? (
-              <TouchableOpacity
-                style={styles.nextButton}
-                onPress={handleCompleteStep}
-              >
-                <Text style={styles.buttonText}>NEXT STEP</Text>
-              </TouchableOpacity>
-            ) : allStepsCompleted() ? (
-              <View style={styles.completionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.previewButton]}
-                  onPress={() => setShowPreview(true)}
-                >
-                  <Text style={styles.buttonText}>PREVIEW TRIP</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.completeButton]}
-                  onPress={submitTripData}
-                >
-                  <Text style={styles.buttonText}>COMPLETE TRIP</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.nextButton, styles.disabledButton]}
-                disabled={true}
-              >
-                <Text style={styles.buttonText}>
-                  COMPLETE ALL FIELDS TO CONTINUE
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )} */}
       </KeyboardAvoidingView>
 
-      {/* Image Picker Modal */}
       <Modal
         visible={showImagePicker}
         transparent={true}
@@ -535,19 +581,13 @@ const TripLogScreen = ({ navigation, route }) => {
             <Text style={styles.imagePickerTitle}>Select Image Source</Text>
             <TouchableOpacity
               style={styles.imagePickerOption}
-              onPress={() => {
-                setShowImagePicker(false);
-                handleTakePhoto();
-              }}
+              onPress={handleTakePhoto}
             >
               <Text style={styles.imagePickerOptionText}>Take Photo</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.imagePickerOption}
-              onPress={() => {
-                setShowImagePicker(false);
-                handleSelectFromGallery();
-              }}
+              onPress={handleSelectFromGallery}
             >
               <Text style={styles.imagePickerOptionText}>
                 Choose from Gallery
@@ -563,18 +603,22 @@ const TripLogScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Preview Modal */}
       <Modal visible={showPreview} animationType="slide" transparent={false}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Trip Preview</Text>
 
           <ScrollView style={styles.previewContent}>
             <DutyInfoPreview
-              id={dutyInfo.id}
-              category={dutyInfo.category}
-              pickupTime={dutyInfo.pickupTime}
+              id={dutySlipData.id}
+              category={dutySlipData.category}
+              pickupTime={dutySlipData.pickupTime}
+              party={dutySlipData.party}
+              address={dutySlipData.address}
+              contact={dutySlipData.contact}
+              driverName={dutySlipData.driverName}
+              carNumber={dutySlipData.carNumber}
+              tripRoute={dutySlipData.tripRoute}
             />
-            {/* Start KM Preview */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Start KM</Text>
               {startKmImage && (
@@ -589,7 +633,6 @@ const TripLogScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* Signature Preview in Modal */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Customer Signature</Text>
               {signature ? (
@@ -603,7 +646,6 @@ const TripLogScreen = ({ navigation, route }) => {
               )}
             </View>
 
-            {/* End KM Preview */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>End KM</Text>
               {endKmImage && (
@@ -659,7 +701,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    paddingBottom: 120, // Extra space for buttons
+    paddingBottom: 120,
   },
   container: {
     padding: 20,
@@ -706,14 +748,11 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: "#ccc",
   },
-  // section: {
-  //   marginBottom: 30,
-  // },
   signatureSection: {
     marginBottom: 10,
   },
   signatureContainer: {
-    height: 200, // Increased height for better signing area
+    height: 200,
     borderWidth: 1,
     borderColor: "#800000",
     borderRadius: 8,
@@ -822,14 +861,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
-  signaturePreviewContainer: {
-    marginTop: 10,
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 5,
-  },
   signaturePreview: {
     width: "100%",
     height: 150,
@@ -839,10 +870,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   actionButtonsContainer: {
-    // position: "absolute",
-    // bottom: 60,
-    // left: 0,
-    // right: 0,
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: "#fff",
@@ -875,7 +902,6 @@ const styles = StyleSheet.create({
   completeButton: {
     backgroundColor: "#8B0000",
   },
-  // Image Picker Modal Styles
   imagePickerModal: {
     flex: 1,
     justifyContent: "center",
@@ -912,7 +938,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#f44336",
   },
-  // Modal Styles
   modalContainer: {
     flex: 1,
     padding: 20,

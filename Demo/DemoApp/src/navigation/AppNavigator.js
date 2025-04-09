@@ -23,7 +23,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Main" component={MainScreen} />
         <Stack.Screen name="DutySlipInfo" component={DutySlipInfoScreen} />
-        <Stack.Screen name="SignatureScreen" component={TripLogScreen} />
+        <Stack.Screen name="TripLog" component={TripLogScreen} />
         <Stack.Screen name="Profile" component={ProfileInfo} />
         <Stack.Screen name="History" component={DutyHistory} />
       </Stack.Navigator>
