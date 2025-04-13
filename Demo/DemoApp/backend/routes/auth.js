@@ -26,24 +26,12 @@ router.post("/login", async (req, res) => {
     const safeUsername = escapeRegex(username);
 
     const driver = await Driver.findOne({
-      contact,
       name: { $regex: new RegExp(`^${safeUsername}$`, "i") },
-      email,
     });
-
-    // // Case-insensitive search
-    // const driver = await Driver.findOne({
-    //   driverId: { $regex: new RegExp(`^${username}$`, "i") },
-    // });
 
     if (!driver) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    // // Compare with contact number
-    // if (driver.contact !== password) {
-    //   return res.status(401).json({ message: "Invalid credentials" });
-    // }
 
     const isMatch = await driver.comparePassword(password);
     if (!isMatch) {
