@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import DutyInfoPreview from "./DutyInfoPreview";
-import axios from "axios";
+// import axios from "axios";
+import api from "../../../utils/api";
 import {
   View,
   Text,
@@ -273,8 +274,8 @@ const TripLogScreen = ({ navigation, route }) => {
 
       console.log("📤 Submitting trip data as FormData...");
 
-      const response = await axios.post(
-        `http://192.168.0.9:5000/api/duty-slips/${dutySlipId}/complete`,
+      const response = await api.post(
+        `/duty-slips/${dutySlipId}/complete`,
         formData,
         {
           headers: {

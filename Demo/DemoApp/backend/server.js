@@ -21,7 +21,8 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-app.use("/api/auth", require("./routes/auth"));
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
 const dutySlipRoutes = require("./routes/dutySlip");
 app.use("/api/duty-slips", dutySlipRoutes);
 

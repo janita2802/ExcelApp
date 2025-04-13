@@ -12,10 +12,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import axios from "axios";
+// import axios from "axios";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
+import api from "../../../utils/api";
 
 const MainScreen = ({ navigation, route }) => {
   const [menuVisible, setMenuVisible] = useState(false);
@@ -42,8 +43,8 @@ const MainScreen = ({ navigation, route }) => {
 
     setIsLoading(true);
     try {
-      const response = await axios.get(
-        `http://192.168.0.9:5000/api/duty-slips/${dutySlipId.trim()}`,
+      const response = await api.get(
+        `/duty-slips/${dutySlipId.trim()}`,
         { timeout: 10000 }
       );
 

@@ -14,7 +14,8 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import axios from "axios";
+// import axios from "axios";
+import api from "../../../utils/api";
 
 const { width, height } = Dimensions.get("window");
 
@@ -102,8 +103,8 @@ const LoginScreen = ({ navigation }) => {
         return;
       }
 
-      const response = await axios.post(
-        "http://192.168.0.9:5000/api/auth/login",
+      const response = await api.post(
+        "/auth/login",
         {
           username: username.trim(),
           password: password.trim(),
@@ -130,32 +131,71 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  const handleSendOTP = () => {
-    animateModalOut(forgotPasswordAnim, () => {
-      setShowForgotPassword(false);
-      setShowOtpVerification(true);
-      animateModalIn(otpVerificationAnim);
-    });
+  const handleSendOTP = async () => {
+    // Basic validation
+    if (!mobileNumber.trim()) {
+      Alert.alert("Error", "Please enter mobile number");
+      return;
+    }
+    const response = await api.post(
+      "/auth/send-otp",
+      {
+        contact: mobileNumber.trim(),
+      }
+    );
+
+    console.log(response);
+
+    if (response.data.message === "OTP sent successfully") {
+      resetAllFields();
+      animateModalOut(forgotPasswordAnim, () => {
+        setShowForgotPassword(false);
+        setShowOtpVerification(true);
+        animateModalIn(otpVerificationAnim);
+      });
+    }
   };
 
-  const handleVerifyOTP = () => {
+  const handleVerifyOTP = async () => {
     const enteredOtp = otp.join("");
     if (enteredOtp.length === 5) {
+    const response = await api.post(
+      "/auth/verify-otp",
+      {
+        contact: mobileNumber.trim(),
+        otp: enteredOtp.trim(),
+      }
+    );
+
+    if (response.data.message === "OTP sent successfully") {
       animateModalOut(otpVerificationAnim, () => {
         setShowOtpVerification(false);
         setShowResetPassword(true);
         animateModalIn(resetPasswordAnim);
       });
+    }
     } else {
       alert("Please enter complete OTP");
     }
   };
-  const handleResetPassword = () => {
-    animateModalOut(resetPasswordAnim, () => {
-      setShowResetPassword(false);
-      resetAllFields(); // Clear all fields
-      alert("Password changed successfully!");
-    });
+  const handleResetPassword = async () => {
+    const response = await api.post(
+      "/auth/change-password",
+      {
+        contact: mobileNumber.trim(),
+        newPassword: newPassword.trim(), 
+        confirmPassword: confirmPassword.trim(), 
+        isReset: true
+      }
+    );
+
+    if (response.data.message === "OTP sent successfully") {
+      animateModalOut(resetPasswordAnim, () => {
+        setShowResetPassword(false);
+        resetAllFields(); // Clear all fields
+        alert("Password changed successfully!");
+      });
+    }
   };
 
   const closeModal = () => {
