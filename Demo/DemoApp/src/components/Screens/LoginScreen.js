@@ -463,6 +463,11 @@ const LoginScreen = ({ navigation }) => {
                   style={styles.clearOtpButton}
                 >
                   <Text style={styles.clearOtpButtonText}>Clear OTP</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSendOTP}
+                  style={styles.clearOtpButton}
+                >
                   <Text style={styles.clearOtpButtonText}>Resend OTP</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
