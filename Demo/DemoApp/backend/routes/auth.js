@@ -75,11 +75,12 @@ router.post("/send-otp", async (req, res) => {
     // Rest of your existing OTP logic...
     await OTP.deleteMany({ email: contact });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(10000 + Math.random() * 90000).toString();
+
     await OTP.create({
       email: contact,
       otp,
-      expiresAt: new Date(Date.now() + 600000), // 10 minutes
+      expiresAt: new Date(Date.now() + 600000), // Expires in 10 minutes
     });
 
     // // Use the HTML template
@@ -115,23 +116,24 @@ router.post("/verify-otp", async (req, res) => {
   const { contact, otp } = req.body;
 
   try {
-    // Find the OTP record
-    const otpRecord = await OTP.findOne({ email: contact, otp });
+    const normalizedContact = contact.trim(); // Normalize input if needed
 
-    if (!otpRecord || otpRecord.expiresAt < new Date()) {
+    // Find the OTP record
+    const otpRecord = await OTP.findOne({ email: normalizedContact, otp });
+
+    if (!otpRecord || otpRecord.expiresAt.getTime() < Date.now()) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // For role-specific verification, check if email matches the role
-    if (contact) {
-      const driver = await Driver.findOne({ contact });
-      if (!driver) {
-        return res.status(403).json({
-          message: `OTP is not valid for this user`,
-        });
-      }
+    // Optional: Check if contact belongs to a valid Driver
+    const driver = await Driver.findOne({ contact: normalizedContact });
+    if (!driver) {
+      return res.status(403).json({
+        message: `OTP is not valid for this user`,
+      });
     }
 
+    // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
 
     res.json({
