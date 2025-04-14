@@ -1,5 +1,5 @@
 import axios from "axios";
-import Config from 'react-native-config';
+import Constants from 'expo-constants';
 
 /**
  * Dynamically get the backend URL based on the frontend's current hostname.
@@ -10,7 +10,7 @@ const getBackendUrl = () => {
 };
 
 const api = axios.create({
-  baseURL: Config.API_BASE_URL || getBackendUrl(), // Fallback
+  baseURL: Constants.expoConfig.extra.API_BASE_URL || getBackendUrl(), // Fallback
   headers: {
     "Content-Type": "application/json",
   },

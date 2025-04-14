@@ -58,9 +58,6 @@ router.post("/login", async (req, res) => {
 router.post("/send-otp", async (req, res) => {
   const { contact } = req.body;
 
-  console.log("hi");
-  console.log(contact);
-
   try {
     let driver;
 
