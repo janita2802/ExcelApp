@@ -104,8 +104,8 @@ const LoginScreen = ({ navigation }) => {
       }
 
       const response = await api.post("/auth/login", {
-        username: username.trim(),
-        password: password.trim(),
+          username: username.trim(),
+          password: password.trim(),
       });
 
       if (response.data.message === "Login successful") {
@@ -135,13 +135,10 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
     const response = await api.post("/auth/send-otp", {
-      contact: mobileNumber.trim(),
+        contact: mobileNumber.trim(),
     });
 
-    console.log(response);
-
     if (response.data.message === "OTP sent successfully") {
-      resetAllFields();
       animateModalOut(forgotPasswordAnim, () => {
         setShowForgotPassword(false);
         setShowOtpVerification(true);
@@ -152,23 +149,22 @@ const LoginScreen = ({ navigation }) => {
 
   const handleVerifyOTP = async () => {
     const enteredOtp = otp.join("");
-
     if (enteredOtp.length === 5) {
       try {
         const response = await api.post("/auth/verify-otp", {
-          contact: mobileNumber.trim(),
-          otp: enteredOtp.trim(),
+        contact: mobileNumber.trim(),
+        otp: enteredOtp.trim(),
         });
 
         if (
           response.data.success &&
           response.data.message === "OTP verified successfully"
         ) {
-          animateModalOut(otpVerificationAnim, () => {
-            setShowOtpVerification(false);
-            setShowResetPassword(true);
-            animateModalIn(resetPasswordAnim);
-          });
+      animateModalOut(otpVerificationAnim, () => {
+        setShowOtpVerification(false);
+        setShowResetPassword(true);
+        animateModalIn(resetPasswordAnim);
+      });
         } else {
           alert(response.data.message || "OTP verification failed");
         }
@@ -178,7 +174,7 @@ const LoginScreen = ({ navigation }) => {
           error.response?.data?.message ||
             "Something went wrong during OTP verification"
         );
-      }
+    }
     } else {
       alert("Please enter complete OTP");
     }
@@ -186,13 +182,13 @@ const LoginScreen = ({ navigation }) => {
 
   const handleResetPassword = async () => {
     const response = await api.post("/auth/change-password", {
-      contact: mobileNumber.trim(),
-      newPassword: newPassword.trim(),
-      confirmPassword: confirmPassword.trim(),
+        contact: mobileNumber.trim(),
+        newPassword: newPassword.trim(), 
+        confirmPassword: confirmPassword.trim(), 
       isReset: true,
     });
 
-    if (response.data.message === "OTP sent successfully") {
+    if (response.data.message === "Password changed successfully") {
       animateModalOut(resetPasswordAnim, () => {
         setShowResetPassword(false);
         resetAllFields(); // Clear all fields

@@ -127,11 +127,11 @@ router.post("/verify-otp", async (req, res) => {
 
     // Optional: Check if contact belongs to a valid Driver
     const driver = await Driver.findOne({ contact: normalizedContact });
-    if (!driver) {
-      return res.status(403).json({
-        message: `OTP is not valid for this user`,
-      });
-    }
+      if (!driver) {
+        return res.status(403).json({
+          message: `OTP is not valid for this user`,
+        });
+      }
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
@@ -151,7 +151,7 @@ router.post("/change-password", async (req, res) => {
   const { contact, newPassword, confirmPassword, isReset } = req.body;
 
   try {
-    if (!formattedPhone) {
+    if (!contact) {
       return res.status(400).json({ message: "Phone number is required" });
     }
 
