@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -34,6 +34,7 @@ const LoginScreen = ({ navigation }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [focusedInput, setFocusedInput] = useState(null);
   const [activeOtpIndex, setActiveOtpIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const resetAllFields = () => {
     setUsername("");
@@ -48,6 +49,19 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const otpInputRefs = useRef([]);
+
+  useEffect(() => {
+    if (showOtpVerification) {
+      // Reset OTP when modal appears
+      setOtp(["", "", "", "", ""]);
+
+      // Focus first input after a small delay
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+        setActiveOtpIndex(0);
+      }, 100);
+    }
+  }, [showOtpVerification]);
 
   const forgotPasswordAnim = useRef({
     fade: new Animated.Value(0),
@@ -103,9 +117,12 @@ const LoginScreen = ({ navigation }) => {
         return;
       }
 
+      // Show loading indicator
+      setIsLoading(true);
+
       const response = await api.post("/auth/login", {
-          username: username.trim(),
-          password: password.trim(),
+        username: username.trim(),
+        password: password.trim(),
       });
 
       if (response.data.message === "Login successful") {
@@ -113,6 +130,8 @@ const LoginScreen = ({ navigation }) => {
         navigation.navigate("Main", {
           driver: response.data.driver,
         });
+      } else {
+        Alert.alert("Error", response.data.message || "Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -121,79 +140,158 @@ const LoginScreen = ({ navigation }) => {
       if (error.response) {
         errorMessage = error.response.data.message || errorMessage;
       } else if (error.request) {
-        errorMessage = "Could not connect to server";
+        errorMessage =
+          "Could not connect to server. Please check your internet connection";
       }
 
       Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSendOTP = async () => {
-    // Basic validation
-    if (!mobileNumber.trim()) {
-      Alert.alert("Error", "Please enter mobile number");
-      return;
-    }
-    const response = await api.post("/auth/send-otp", {
-        contact: mobileNumber.trim(),
-    });
+    try {
+      // Basic validation
+      if (!mobileNumber.trim()) {
+        Alert.alert("Error", "Please enter mobile number");
+        return;
+      }
 
-    if (response.data.message === "OTP sent successfully") {
-      animateModalOut(forgotPasswordAnim, () => {
-        setShowForgotPassword(false);
-        setShowOtpVerification(true);
-        animateModalIn(otpVerificationAnim);
+      // Show loading indicator
+      setIsLoading(true);
+
+      const response = await api.post("/auth/send-otp", {
+        contact: mobileNumber.trim(),
       });
+
+      if (response.data.message === "OTP sent successfully") {
+        animateModalOut(forgotPasswordAnim, () => {
+          setShowForgotPassword(false);
+          setShowOtpVerification(true);
+          animateModalIn(otpVerificationAnim);
+        });
+      } else {
+        Alert.alert("Error", response.data.message || "Failed to send OTP");
+      }
+    } catch (error) {
+      console.error("Send OTP error:", error);
+
+      let errorMessage = "Failed to send OTP";
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage =
+          "Could not connect to server. Please check your internet connection";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVerifyOTP = async () => {
-    const enteredOtp = otp.join("");
-    if (enteredOtp.length === 5) {
-      try {
-        const response = await api.post("/auth/verify-otp", {
+    try {
+      const enteredOtp = otp.join("");
+
+      // Validation
+      if (enteredOtp.length !== 5) {
+        Alert.alert("Error", "Please enter complete 5-digit OTP");
+        return;
+      }
+
+      // Show loading indicator
+      setIsLoading(true);
+
+      const response = await api.post("/auth/verify-otp", {
         contact: mobileNumber.trim(),
         otp: enteredOtp.trim(),
-        });
-
-        if (
-          response.data.success &&
-          response.data.message === "OTP verified successfully"
-        ) {
-      animateModalOut(otpVerificationAnim, () => {
-        setShowOtpVerification(false);
-        setShowResetPassword(true);
-        animateModalIn(resetPasswordAnim);
       });
-        } else {
-          alert(response.data.message || "OTP verification failed");
-        }
-      } catch (error) {
-        console.error("OTP verification error:", error);
-        alert(
-          error.response?.data?.message ||
-            "Something went wrong during OTP verification"
+
+      if (
+        response.data.success &&
+        response.data.message === "OTP verified successfully"
+      ) {
+        animateModalOut(otpVerificationAnim, () => {
+          setShowOtpVerification(false);
+          setShowResetPassword(true);
+          animateModalIn(resetPasswordAnim);
+        });
+      } else {
+        Alert.alert(
+          "Error",
+          response.data.message || "OTP verification failed"
         );
-    }
-    } else {
-      alert("Please enter complete OTP");
+      }
+    } catch (error) {
+      console.error("OTP verification error:", error);
+
+      let errorMessage = "OTP verification failed";
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage =
+          "Could not connect to server. Please check your internet connection";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleResetPassword = async () => {
-    const response = await api.post("/auth/change-password", {
-        contact: mobileNumber.trim(),
-        newPassword: newPassword.trim(), 
-        confirmPassword: confirmPassword.trim(), 
-      isReset: true,
-    });
+    try {
+      // Validation
+      if (!newPassword.trim() || !confirmPassword.trim()) {
+        Alert.alert("Error", "Please enter both new password and confirmation");
+        return;
+      }
 
-    if (response.data.message === "Password changed successfully") {
-      animateModalOut(resetPasswordAnim, () => {
-        setShowResetPassword(false);
-        resetAllFields(); // Clear all fields
-        alert("Password changed successfully!");
+      if (newPassword.trim() !== confirmPassword.trim()) {
+        Alert.alert("Error", "Passwords do not match");
+        return;
+      }
+
+      if (newPassword.trim().length < 6) {
+        Alert.alert("Error", "Password must be at least 6 characters long");
+        return;
+      }
+
+      // Show loading indicator
+      setIsLoading(true);
+
+      const response = await api.post("/auth/change-password", {
+        contact: mobileNumber.trim(),
+        newPassword: newPassword.trim(),
+        confirmPassword: confirmPassword.trim(),
+        isReset: true,
       });
+
+      if (response.data.message === "Password changed successfully") {
+        animateModalOut(resetPasswordAnim, () => {
+          setShowResetPassword(false);
+          resetAllFields();
+          Alert.alert("Success", "Password changed successfully!");
+        });
+      } else {
+        Alert.alert("Error", response.data.message || "Password change failed");
+      }
+    } catch (error) {
+      console.error("Reset password error:", error);
+
+      let errorMessage = "Failed to reset password";
+      if (error.response) {
+        errorMessage = error.response.data.message || errorMessage;
+      } else if (error.request) {
+        errorMessage =
+          "Could not connect to server. Please check your internet connection";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -253,20 +351,47 @@ const LoginScreen = ({ navigation }) => {
   ];
 
   const handleOtpChange = (text, index) => {
+    // Filter non-numeric characters
+    const numericValue = text.replace(/[^0-9]/g, "");
+
+    // Handle paste operation (when text length > 1)
+    if (numericValue.length > 1) {
+      const pastedOtp = numericValue.split("").slice(0, 5);
+      const newOtp = [...otp];
+
+      // Fill OTP fields with pasted values
+      pastedOtp.forEach((digit, i) => {
+        if (i < 5) newOtp[i] = digit;
+      });
+
+      setOtp(newOtp);
+
+      // Focus the last input of pasted OTP
+      const focusIndex = Math.min(pastedOtp.length - 1, 4);
+      setTimeout(() => {
+        otpInputRefs.current[focusIndex]?.focus();
+        setActiveOtpIndex(focusIndex);
+      }, 0);
+      return;
+    }
+
+    // Handle autofill or manual single-digit entry
     const newOtp = [...otp];
-    newOtp[index] = text;
+    newOtp[index] = numericValue;
     setOtp(newOtp);
 
-    // Move to next input if current input is filled
-    if (text && index < 4) {
-      otpInputRefs.current[index + 1].focus();
-      setActiveOtpIndex(index + 1);
+    // Auto-focus next input if current input is filled
+    if (numericValue && index < 4) {
+      setTimeout(() => {
+        otpInputRefs.current[index + 1]?.focus();
+        setActiveOtpIndex(index + 1);
+      }, 0);
     }
   };
 
-  const handleOtpKeyPress = (e, index) => {
-    if (e.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-      otpInputRefs.current[index - 1].focus();
+  const handleOtpKeyPress = ({ nativeEvent }, index) => {
+    if (nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
       setActiveOtpIndex(index - 1);
     }
   };
@@ -275,28 +400,24 @@ const LoginScreen = ({ navigation }) => {
     return (
       <View style={styles.otpContainer}>
         {otp.map((digit, index) => (
-          <TouchableOpacity
+          <TextInput
             key={index}
+            ref={(ref) => (otpInputRefs.current[index] = ref)}
             style={[
               styles.otpInput,
               activeOtpIndex === index && styles.activeOtpInput,
             ]}
-            onPress={() => {
-              otpInputRefs.current[index].focus();
-              setActiveOtpIndex(index);
-            }}
-          >
-            <TextInput
-              ref={(ref) => (otpInputRefs.current[index] = ref)}
-              style={styles.otpText}
-              value={digit}
-              onChangeText={(text) => handleOtpChange(text, index)}
-              onKeyPress={(e) => handleOtpKeyPress(e, index)}
-              keyboardType="numeric"
-              maxLength={1}
-              selectTextOnFocus
-            />
-          </TouchableOpacity>
+            value={digit}
+            onChangeText={(text) => handleOtpChange(text, index)}
+            onKeyPress={(e) => handleOtpKeyPress(e, index)}
+            keyboardType="number-pad"
+            maxLength={index === 0 ? 5 : 1} // Allow pasting in first field
+            textContentType="oneTimeCode" // iOS autofill
+            autoComplete="sms-otp" // Android autofill
+            importantForAutofill="yes"
+            selectTextOnFocus
+            onFocus={() => setActiveOtpIndex(index)}
+          />
         ))}
       </View>
     );
@@ -772,6 +893,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#800000",
   },
   activeOtpInput: {
     borderWidth: 2,
