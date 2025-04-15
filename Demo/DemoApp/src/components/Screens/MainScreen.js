@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   View,
   StyleSheet,
@@ -13,7 +14,6 @@ import {
   BackHandler,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-// import axios from "axios";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
@@ -24,39 +24,48 @@ const MainScreen = ({ navigation, route }) => {
   const [dutySlipId, setDutySlipId] = useState("");
   const [dutySlipIdFocused, setDutySlipIdFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showLogoutAlert, setShowLogoutAlert] = useState(false);
 
-  // Get driver name from route params if available
-  const userName = route.params?.driver?.name || "Driver";
+  // Get driver details from route params if available
+  const driver = route.params?.driver || {};
+  const userName = driver.name || "Driver";
+  const driverId = driver.driverId; // Assuming the driver object has an _id field
 
-  useEffect(() => {
-    const backAction = () => {
-      Alert.alert(
-        "Logout",
-        "Are you sure you want to logout?",
-        [
-          {
-            text: "Cancel",
-            onPress: () => null,
-            style: "cancel",
-          },
-          {
-            text: "Yes",
-            onPress: () => navigation.navigate("Login"),
-          },
-        ],
-        { cancelable: true }
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Show alert and wait for user input
+        Alert.alert(
+          "Logout",
+          "Are you sure you want to logout?",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => {}, // do nothing
+            },
+            {
+              text: "Yes",
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "Login" }],
+                });
+              },
+            },
+          ],
+          { cancelable: true }
+        );
+        return true; // Important: prevent default back behavior
+      };
+
+      const backHandler = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
       );
-      return true; // Prevent default behavior
-    };
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
-
-    return () => backHandler.remove();
-  }, []);
+      return () => backHandler.remove();
+    }, [navigation])
+  );
 
   const handleLogout = () => {
     navigation.navigate("Login");
@@ -78,13 +87,29 @@ const MainScreen = ({ navigation, route }) => {
         timeout: 10000,
       });
 
-      if (response.data) {
-        navigation.navigate("DutySlipInfo", {
-          dutySlipData: response.data,
-          driverName: userName, // Pass driver name to next screen
-        });
-        clearInput();
+      const slip = response.data;
+
+      if (!slip) {
+        Alert.alert("Error", "Duty slip not found.");
+        return;
       }
+
+      console.log("Slip driverId:", slip.driverId);
+      console.log("Logged-in driverId:", driverId);
+
+      // Check if this slip belongs to the logged-in driver
+      if (slip.driverId !== driverId) {
+        Alert.alert("Access Denied", "This duty slip is not assigned to you.");
+        return;
+      }
+
+      // If check passed, navigate to the next screen
+      navigation.navigate("DutySlipInfo", {
+        dutySlipData: slip,
+        driverName: userName,
+        driverId: driverId,
+      });
+      clearInput();
     } catch (error) {
       let errorMessage = "An error occurred";
       if (error.response) {
@@ -100,6 +125,41 @@ const MainScreen = ({ navigation, route }) => {
       setIsLoading(false);
     }
   };
+
+  // const handleSubmit = async () => {
+  //   if (!dutySlipId.trim()) {
+  //     Alert.alert("Error", "Please enter a Duty Slip ID");
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await api.get(`/duty-slips/${dutySlipId.trim()}`, {
+  //       timeout: 10000,
+  //     });
+
+  //     if (response.data) {
+  //       navigation.navigate("DutySlipInfo", {
+  //         dutySlipData: response.data,
+  //         driverName: userName,
+  //         driverId: driverId,
+  //       });
+  //       clearInput();
+  //     }
+  //   } catch (error) {
+  //     let errorMessage = "An error occurred";
+  //     if (error.response) {
+  //       errorMessage =
+  //         error.response.status === 404
+  //           ? "Duty slip not found"
+  //           : error.response.data.message || errorMessage;
+  //     } else if (error.request) {
+  //       errorMessage = "Could not connect to server. Check your network.";
+  //     }
+  //     Alert.alert("Error", errorMessage);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -202,84 +262,76 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "center", // Center content vertically
-  },
-  centeredContent: {
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
-  formContainer: {
-    maxWidth: 500, // Limit form width for better appearance on larger screens
-    width: "100%",
-    alignSelf: "center", // Center form horizontally
-  },
-  footerContainer: {
-    width: "100%",
+  centeredContent: {
+    alignItems: "center",
   },
   greeting: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "bold",
     color: "#800000",
-    marginBottom: 25,
-    textAlign: "center",
+    marginBottom: 30,
+  },
+  formContainer: {
+    width: "100%",
+    maxWidth: 500,
   },
   table: {
     borderWidth: 1,
     borderColor: "#800000",
-    borderRadius: 10,
+    borderRadius: 5,
     overflow: "hidden",
-    marginBottom: 30,
-    backgroundColor: "#FFF",
   },
   headingRow: {
     backgroundColor: "#800000",
-    paddingVertical: 15,
+    paddingVertical: 10,
   },
   headingCell: {
-    color: "#FFF",
+    color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
-    textTransform: "uppercase",
   },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderColor: "#E0E0E0",
+    borderBottomColor: "#ddd",
   },
   inputRow: {
-    paddingVertical: 10,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
   },
   cellLeft: {
     flex: 1,
-    padding: 10,
     justifyContent: "center",
-    alignItems: "flex-start",
-    borderRightWidth: 1,
-    borderColor: "#E0E0E0",
   },
   cellRight: {
     flex: 2,
-    padding: 10,
-    justifyContent: "center",
   },
   label: {
     fontSize: 16,
-    fontWeight: "500",
     color: "#333",
-    marginLeft: 10,
   },
-  input: {
-    height: 40,
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "#800000",
     borderRadius: 5,
     paddingHorizontal: 10,
-    fontSize: 16,
-    backgroundColor: "#FFF",
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    color: "#333",
   },
   inputFocused: {
-    borderColor: "#800000",
-    borderWidth: 1.5,
+    borderColor: "#b30000",
+  },
+  clearButton: {
+    padding: 5,
   },
   buttonRow: {
     padding: 15,
@@ -290,41 +342,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 5,
-    width: "80%",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 3,
   },
   submitButtonDisabled: {
-    backgroundColor: "#cccccc",
-    elevation: 0,
+    backgroundColor: "#ccc",
   },
   submitButtonText: {
-    color: "#FFF",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  // Add these new styles:
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    fontSize: 16,
-    backgroundColor: "#FFF",
-    paddingRight: 30, // Make space for the clear button
-  },
-  clearButton: {
-    position: "absolute",
-    right: 10,
-    padding: 5,
   },
 });
 

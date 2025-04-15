@@ -26,6 +26,7 @@ router.get("/:id", async (req, res) => {
       category: dutySlip.carBooked,
       pickupTime: dutySlip.pickupTime,
       driverName: dutySlip.driverName,
+      driverId: dutySlip.driverId,
       carNumber: dutySlip.carNumber,
       tripRoute: dutySlip.tripRoute,
     };
