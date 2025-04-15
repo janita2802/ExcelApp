@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  BackHandler,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 // import axios from "axios";
@@ -23,9 +24,39 @@ const MainScreen = ({ navigation, route }) => {
   const [dutySlipId, setDutySlipId] = useState("");
   const [dutySlipIdFocused, setDutySlipIdFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showLogoutAlert, setShowLogoutAlert] = useState(false);
 
   // Get driver name from route params if available
   const userName = route.params?.driver?.name || "Driver";
+
+  useEffect(() => {
+    const backAction = () => {
+      Alert.alert(
+        "Logout",
+        "Are you sure you want to logout?",
+        [
+          {
+            text: "Cancel",
+            onPress: () => null,
+            style: "cancel",
+          },
+          {
+            text: "Yes",
+            onPress: () => navigation.navigate("Login"),
+          },
+        ],
+        { cancelable: true }
+      );
+      return true; // Prevent default behavior
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   const handleLogout = () => {
     navigation.navigate("Login");
@@ -43,10 +74,9 @@ const MainScreen = ({ navigation, route }) => {
 
     setIsLoading(true);
     try {
-      const response = await api.get(
-        `/duty-slips/${dutySlipId.trim()}`,
-        { timeout: 10000 }
-      );
+      const response = await api.get(`/duty-slips/${dutySlipId.trim()}`, {
+        timeout: 10000,
+      });
 
       if (response.data) {
         navigation.navigate("DutySlipInfo", {
@@ -161,8 +191,6 @@ const MainScreen = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-// ... (keep your existing styles)
 
 const styles = StyleSheet.create({
   safeArea: {

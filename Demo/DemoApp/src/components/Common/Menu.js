@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
@@ -33,9 +34,31 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
     {
       title: "Logout",
       icon: "exit-to-app",
-      action: onLogout,
+      action: () => showLogoutConfirmation(),
     },
   ];
+
+  const showLogoutConfirmation = () => {
+    Alert.alert(
+      "Confirm Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: () => {
+            onClose();
+            onLogout();
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   const slideAnim = React.useRef(new Animated.Value(MENU_WIDTH)).current;
 
@@ -97,7 +120,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
             style={styles.menuItem}
             onPress={() => {
               item.action ? item.action() : onSelect(item.screen);
-              onClose();
+              if (!item.action) onClose();
             }}
           >
             <Icon name={item.icon} size={22} color="#fff" style={styles.icon} />
@@ -112,50 +135,36 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    zIndex: 99,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1,
   },
   menuContainer: {
     position: "absolute",
-    right: 0,
     top: 0,
-    bottom: 0,
+    right: 0,
     width: MENU_WIDTH,
-    paddingTop: 20, // Reduced padding to accommodate close button
-    zIndex: 100,
+    height: "100%",
+    zIndex: 2,
+    paddingTop: 50,
   },
   closeButton: {
     position: "absolute",
-    right: 15,
-    top: 15,
-    padding: 8,
-    zIndex: 101,
+    top: 10,
+    right: 10,
+    padding: 10,
+    zIndex: 3,
   },
   profileSection: {
-    padding: 20,
-    paddingTop: 40, // Added space for close button
     alignItems: "center",
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#660000",
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#660000",
-  },
-  menuText: {
-    fontSize: 16,
-    color: "#fff",
-    marginLeft: 15,
-    flex: 1,
-  },
-  icon: {
-    width: 24,
-    textAlign: "center",
+    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    marginBottom: 20,
   },
   profilePicContainer: {
     width: 80,
@@ -165,22 +174,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
-    overflow: "hidden",
   },
   profilePic: {
-    width: "100%",
-    height: "100%",
+    width: 70,
+    height: 70,
+    borderRadius: 35,
   },
   greetingText: {
     color: "#fff",
     fontSize: 16,
-    opacity: 0.8,
   },
   userName: {
     color: "#fff",
     fontSize: 20,
     fontWeight: "bold",
-    marginTop: 5,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+  },
+  menuText: {
+    color: "#fff",
+    fontSize: 16,
+    flex: 1,
+    marginLeft: 15,
+  },
+  icon: {
+    width: 24,
+    textAlign: "center",
   },
 });
 
