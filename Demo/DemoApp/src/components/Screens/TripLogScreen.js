@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import DutyInfoPreview from "./DutyInfoPreview";
 // import axios from "axios";
-import api from "../../../utils/api";
+import api from "../../utils/api";
 import {
   View,
   Text,

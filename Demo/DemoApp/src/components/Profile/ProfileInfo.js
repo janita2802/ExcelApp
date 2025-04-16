@@ -12,20 +12,78 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
+// import DateTimePicker from "@react-native-community/datetimepicker";
+import api from "../../utils/api";
+import { getDriverId } from '../../utils/auth';
 
-const ProfileInfo = ({ navigation }) => {
-  const [profile, setProfile] = useState({
-    username: "Driver Name",
-    email: "driver@example.com",
-    phone: "+1 234 567 8900",
-    dob: new Date(1990, 0, 1),
-    address: "123 Main St, City",
-    licenseNumber: "DL123456789",
+const ProfileInfo = ({ navigation, route }) => {
+
+  // 1. First try to use data passed through navigation params
+  useEffect(() => {
+    if (route.params?.driver) {
+      const { driver } = route.params;
+      setProfile({
+        username: driver.username || driver.name || "",
+        email: driver.email || "",
+        contact: driver.contact || driver.phone || "",
+        age: driver.age || "",
+        address: driver.address || "",
+        licenseNumber: driver.licenseNumber || "",
+        // Keep password fields empty
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      
+      // If driver has a profile picture URL
+      if (driver.profilePic) {
+        setProfilePic({ uri: driver.profilePic });
+      }
+    }
+  }, [route.params?.driver]);
+
+  // 2. If no params, fetch fresh data from API
+  useEffect(() => {
+    const fetchDriverProfile = async () => {
+      try {
+        const driverId = await getDriverId();
+        if (!driverId) {
+          navigation.navigate('Login');
+          return;
+        }
+
+        const response = await api.get(`/drivers/${driverId}`);
+        const driverData = response.data;
+        
+        setProfile({
+          username: driverData.name || "",
+          email: driverData.email || "",
+          contact: driverData.contact || "",
+          age: driverData.age || "",
+          address: driverData.address || "",
+          licenseNumber: driverData.licenseNumber || "",
+          // Keep password fields empty
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+
+        if (driverData.profilePic) {
+          setProfilePic({ uri: driverData.profilePic });
+        }
+      } catch (error) {
+        console.error("Failed to fetch driver profile:", error);
+        Alert.alert("Error", "Could not load profile data");
+      }
+    };
+
+    // Only fetch if we didn't get data from navigation params
+    if (!route.params?.driver) {
+      fetchDriverProfile();
+    }
+  }, []);
+
+  const [profile, setProfile] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [profilePic, setProfilePic] = useState(
     require("C:/Users/DELL/Desktop/Demo/ExcelApp/Demo/DemoApp/assets/profile.png")
@@ -113,7 +171,7 @@ const ProfileInfo = ({ navigation }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       profile.newPassword &&
       profile.newPassword !== profile.confirmPassword
@@ -125,9 +183,21 @@ const ProfileInfo = ({ navigation }) => {
     // Here you would typically send the data to your backend
     console.log("Profile data to save:", profile);
 
+    const driverId = await getDriverId();
+    if (!driverId) {
+      navigation.navigate('Login');
+      return;
+    }
+
+    try {
+      await api.put(`/drivers/${driverId}`, profile);
+      await refreshProfile();
     Alert.alert("Success", "Profile updated successfully", [
       { text: "OK", onPress: () => navigation.goBack() },
     ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update profile');
+    }
   };
 
   const formatDate = (date) => {
@@ -174,7 +244,7 @@ const ProfileInfo = ({ navigation }) => {
             styles.input,
             focusedField === "username" && styles.inputFocused,
           ]}
-          value={profile.username}
+          value={profile.name}
           onChangeText={(text) => handleChange("username", text)}
           placeholder="Enter your full name"
           onFocus={() => handleFocus("username")}
@@ -205,7 +275,7 @@ const ProfileInfo = ({ navigation }) => {
             styles.input,
             focusedField === "phone" && styles.inputFocused,
           ]}
-          value={profile.phone}
+          value={profile.contact}
           onChangeText={(text) => handleChange("phone", text)}
           placeholder="Enter your phone number"
           keyboardType="phone-pad"
@@ -215,6 +285,22 @@ const ProfileInfo = ({ navigation }) => {
       </View>
 
       <View style={styles.formGroup}>
+        <Text style={styles.label}>Age</Text>
+        <TextInput
+          style={[
+            styles.input,
+            focusedField === "age" && styles.inputFocused,
+          ]}
+          value={profile.age}
+          onChangeText={(text) => handleChange("age", text)}
+          placeholder="Enter your age"
+          keyboardType="phone-pad"
+          onFocus={() => handleFocus("age")}
+          onBlur={handleBlur}
+        />
+      </View>
+
+      {/* <View style={styles.formGroup}>
         <Text style={styles.label}>Date of Birth</Text>
         <TouchableOpacity
           style={[
@@ -238,7 +324,7 @@ const ProfileInfo = ({ navigation }) => {
             maximumDate={new Date()}
           />
         )}
-      </View>
+      </View> */}
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Address</Text>

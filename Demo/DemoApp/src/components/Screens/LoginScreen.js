@@ -14,8 +14,8 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-// import axios from "axios";
-import api from "../../../utils/api";
+import api from "../../utils/api";
+import { storeDriverData } from '../../utils/auth';
 
 const { width, height } = Dimensions.get("window");
 
@@ -126,6 +126,7 @@ const LoginScreen = ({ navigation }) => {
       });
 
       if (response.data.message === "Login successful") {
+        await storeDriverData(response.data.driver);
         resetAllFields();
         navigation.navigate("Main", {
           driver: response.data.driver,

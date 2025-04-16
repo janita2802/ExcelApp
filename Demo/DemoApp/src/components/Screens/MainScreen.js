@@ -17,7 +17,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
-import api from "../../../utils/api";
+import api from "../../utils/api";
 
 const MainScreen = ({ navigation, route }) => {
   const [menuVisible, setMenuVisible] = useState(false);
