@@ -243,16 +243,12 @@ const ProfileInfo = ({ navigation, route }) => {
         <Text style={styles.label}>ID</Text>
         <TextInput
           style={[
-            styles.input,
-            focusedField === "name" && styles.inputFocused,
+            styles.input
           ]}
           value={profile.driverId}
           editable={false}
           selectTextOnFocus={false}
-          // onChangeText={(text) => handleChange("name", text)}
           placeholder="Enter your ID"
-          // onFocus={() => handleFocus("driverId")}
-          // onBlur={handleBlur}
         />
       </View>
       <View style={styles.formGroup}>
