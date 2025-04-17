@@ -23,7 +23,8 @@ const ProfileInfo = ({ navigation, route }) => {
     if (route.params?.driver) {
       const { driver } = route.params;
       setProfile({
-        username: driver.username || driver.name || "",
+        driverId: driver.driverId || "",
+        name: driver.name || "",
         email: driver.email || "",
         contact: driver.contact || driver.phone || "",
         age: driver.age || "",
@@ -56,17 +57,18 @@ const ProfileInfo = ({ navigation, route }) => {
         const driverData = response.data;
         
         setProfile({
-          username: driverData.name || "",
+          driverId: driverData.driverId || "",
+          name: driverData.name || "",
           email: driverData.email || "",
           contact: driverData.contact || "",
           age: driverData.age || "",
           address: driverData.address || "",
           licenseNumber: driverData.licenseNumber || "",
           // Keep password fields empty
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
 
         if (driverData.profilePic) {
           setProfilePic({ uri: driverData.profilePic });
@@ -86,7 +88,7 @@ const ProfileInfo = ({ navigation, route }) => {
   const [profile, setProfile] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [profilePic, setProfilePic] = useState(
-    require("C:/Users/DELL/Desktop/Demo/ExcelApp/Demo/DemoApp/assets/profile.png")
+    require("C:/Users/gaura/WebProjects/ExcelApp/Demo/DemoApp/assets/profile.png")
   );
   const [focusedField, setFocusedField] = useState(null);
 
@@ -191,10 +193,10 @@ const ProfileInfo = ({ navigation, route }) => {
 
     try {
       await api.put(`/drivers/${driverId}`, profile);
-      await refreshProfile();
-    Alert.alert("Success", "Profile updated successfully", [
-      { text: "OK", onPress: () => navigation.goBack() },
-    ]);
+      // await refreshProfile();
+      Alert.alert("Success", "Profile updated successfully", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile');
     }
@@ -238,16 +240,32 @@ const ProfileInfo = ({ navigation, route }) => {
       </View>
 
       <View style={styles.formGroup}>
+        <Text style={styles.label}>ID</Text>
+        <TextInput
+          style={[
+            styles.input,
+            focusedField === "name" && styles.inputFocused,
+          ]}
+          value={profile.driverId}
+          editable={false}
+          selectTextOnFocus={false}
+          // onChangeText={(text) => handleChange("name", text)}
+          placeholder="Enter your ID"
+          // onFocus={() => handleFocus("driverId")}
+          // onBlur={handleBlur}
+        />
+      </View>
+      <View style={styles.formGroup}>
         <Text style={styles.label}>Full Name</Text>
         <TextInput
           style={[
             styles.input,
-            focusedField === "username" && styles.inputFocused,
+            focusedField === "name" && styles.inputFocused,
           ]}
           value={profile.name}
-          onChangeText={(text) => handleChange("username", text)}
+          onChangeText={(text) => handleChange("name", text)}
           placeholder="Enter your full name"
-          onFocus={() => handleFocus("username")}
+          onFocus={() => handleFocus("name")}
           onBlur={handleBlur}
         />
       </View>
