@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { getDriverData } from "../../utils/auth";
 
 const { width } = Dimensions.get("window");
 const MENU_WIDTH = width * 0.7;
@@ -56,6 +57,11 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
     );
   };
 
+  const getDriverName = async () => {
+    const driverData = await getDriverData();
+    return driverData.name? driverData.name : "User";
+  };
+
   const slideAnim = React.useRef(new Animated.Value(MENU_WIDTH)).current;
 
   React.useEffect(() => {
@@ -73,6 +79,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
       }).start();
     }
   }, [visible]);
+
 
   return (
     <>
@@ -106,7 +113,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
             />
           </View>
           <Text style={styles.greetingText}>Hello,</Text>
-          <Text style={styles.userName}>Driver Name</Text>
+          <Text style={styles.userName}>{getDriverName()}</Text>
         </View>
 
         {/* Menu Items */}
