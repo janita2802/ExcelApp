@@ -148,15 +148,19 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 router.post("/change-password", async (req, res) => {
-  const { contact, newPassword, confirmPassword, isReset } = req.body;
+  const { contact, newPassword, currentPassword, isReset } = req.body;
 
   try {
     if (!contact) {
       return res.status(400).json({ message: "Phone number is required" });
     }
 
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+    if (!currentPassword) {
+      return res.status(400).json({ message: "Current Password is required" });
+    }
+
+    if (newPassword === confirmPassword) {
+      return res.status(400).json({ message: "New Password must be different" });
     }
 
     if (newPassword.length < 5) {
@@ -171,8 +175,8 @@ router.post("/change-password", async (req, res) => {
       driver = await Driver.findOne({ contact });
     } else {
       // For regular password change
-      driver = await Driver.findById(req.driver._id);
-      const isMatch = await Driver.comparePassword(currentPassword);
+      driver = await Driver.findOne({ contact });
+      const isMatch = await driver.comparePassword(currentPassword);
       if (!isMatch) {
         return res
           .status(401)

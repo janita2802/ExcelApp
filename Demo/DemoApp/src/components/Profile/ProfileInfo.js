@@ -199,7 +199,6 @@ const ProfileInfo = ({ navigation, route }) => {
       const dataToSend = {
         contact,
         newPassword: profile.newPassword,
-        confirmPassword: profile.confirmPassword,
         currentPassword: profile.currentPassword,
         isReset: false, // Since this is a profile password change, not a reset
       };
