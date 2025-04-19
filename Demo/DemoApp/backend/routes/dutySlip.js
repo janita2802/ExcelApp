@@ -21,6 +21,7 @@ router.get("/:id", async (req, res) => {
     const responseData = {
       id: dutySlip.dutySlipId,
       party: dutySlip.customerName,
+      customerPhoneNumber: dutySlip.customerPhoneNumber,
       address: `${dutySlip.address}, ${dutySlip.city}`,
       contact: dutySlip.phoneNumber,
       category: dutySlip.carBooked,

@@ -59,15 +59,15 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
               <View style={styles.infoCard}>
                 <Text style={styles.sectionTitle}>Duty Information</Text>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Duty Slip ID:</Text>
+                  <Text style={styles.infoLabel}>Duty Slip ID: </Text>
                   <Text style={styles.infoValue}>{dutySlipData.id}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Category:</Text>
+                  <Text style={styles.infoLabel}>Category: </Text>
                   <Text style={styles.infoValue}>{dutySlipData.category}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Pickup Time:</Text>
+                  <Text style={styles.infoLabel}>Pickup Time: </Text>
                   <Text style={styles.infoValue}>
                     {dutySlipData.pickupTime}
                   </Text>
@@ -77,7 +77,7 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
 
                 <Text style={styles.sectionTitle}>Customer Information</Text>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Party:</Text>
+                  <Text style={styles.infoLabel}>Party: </Text>
                   <Text style={styles.infoValue}>{dutySlipData.party}</Text>
                 </View>
 
@@ -89,7 +89,7 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                       color="#800000"
                       style={styles.icon}
                     />
-                    <Text style={styles.infoLabel}>Address:</Text>
+                    <Text style={styles.infoLabel}>Address: </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.clickableField}
@@ -117,14 +117,14 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
                       color="#800000"
                       style={styles.icon}
                     />
-                    <Text style={styles.infoLabel}>Contact No.:</Text>
+                    <Text style={styles.infoLabel}>Contact No.: </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.clickableField}
-                    onPress={() => handlePhonePress(dutySlipData.contact)}
+                    onPress={() => handlePhonePress(dutySlipData.customerPhoneNumber)}
                   >
                     <Text style={[styles.infoValue, styles.linkText]}>
-                      {dutySlipData.contact}
+                      {dutySlipData.customerPhoneNumber}
                     </Text>
                     <MaterialIcons name="call" size={20} color="#0066cc" />
                   </TouchableOpacity>

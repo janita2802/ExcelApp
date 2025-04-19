@@ -7,6 +7,7 @@ const DutySlipSchema = new mongoose.Schema(
     companyName: { type: String, required: true },
     driverId: { type: String, required: true },
     customerName: { type: String, required: true },
+    customerPhoneNumber: { type: String, required: true },
     city: { type: String },
     address: { type: String },
     carBooked: { type: String },
