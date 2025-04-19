@@ -47,7 +47,7 @@ const ProfileInfo = ({ navigation, route }) => {
         name: driver.name || "",
         email: driver.email || "",
         contact: driver.contact || driver.phone || "",
-        age: driver.age || "",
+        age: String(driver.age) || "",
         address: driver.address || "",
         licenseNumber: driver.licenseNumber || "",
       }));
@@ -76,7 +76,7 @@ const ProfileInfo = ({ navigation, route }) => {
           name: driverData.name || "",
           email: driverData.email || "",
           contact: driverData.contact || "",
-          age: driverData.age || "",
+          age: String(driverData.age) || "",
           address: driverData.address || "",
           licenseNumber: driverData.licenseNumber || "",
         }));
