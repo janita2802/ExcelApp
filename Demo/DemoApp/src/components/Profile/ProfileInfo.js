@@ -12,17 +12,37 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
-// import DateTimePicker from "@react-native-community/datetimepicker";
 import api from "../../utils/api";
-import { getDriverId } from '../../utils/auth';
+import { getDriverId } from "../../utils/auth";
 
 const ProfileInfo = ({ navigation, route }) => {
+  const [profile, setProfile] = useState({
+    driverId: "",
+    name: "",
+    email: "",
+    contact: "",
+    age: "",
+    address: "",
+    licenseNumber: "",
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [profilePic, setProfilePic] = useState(
+    require("./.././../../assets/profile.png")
+  );
+  const [focusedField, setFocusedField] = useState(null);
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
 
-  // 1. First try to use data passed through navigation params
   useEffect(() => {
     if (route.params?.driver) {
       const { driver } = route.params;
-      setProfile({
+      setProfile((prev) => ({
+        ...prev,
         driverId: driver.driverId || "",
         name: driver.name || "",
         email: driver.email || "",
@@ -30,33 +50,28 @@ const ProfileInfo = ({ navigation, route }) => {
         age: driver.age || "",
         address: driver.address || "",
         licenseNumber: driver.licenseNumber || "",
-        // Keep password fields empty
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      
-      // If driver has a profile picture URL
+      }));
+
       if (driver.profilePic) {
         setProfilePic({ uri: driver.profilePic });
       }
     }
   }, [route.params?.driver]);
 
-  // 2. If no params, fetch fresh data from API
   useEffect(() => {
     const fetchDriverProfile = async () => {
       try {
         const driverId = await getDriverId();
         if (!driverId) {
-          navigation.navigate('Login');
+          navigation.navigate("Login");
           return;
         }
 
         const response = await api.get(`/drivers/${driverId}`);
         const driverData = response.data;
-        
-        setProfile({
+
+        setProfile((prev) => ({
+          ...prev,
           driverId: driverData.driverId || "",
           name: driverData.name || "",
           email: driverData.email || "",
@@ -64,11 +79,7 @@ const ProfileInfo = ({ navigation, route }) => {
           age: driverData.age || "",
           address: driverData.address || "",
           licenseNumber: driverData.licenseNumber || "",
-          // Keep password fields empty
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        });
+        }));
 
         if (driverData.profilePic) {
           setProfilePic({ uri: driverData.profilePic });
@@ -79,36 +90,9 @@ const ProfileInfo = ({ navigation, route }) => {
       }
     };
 
-    // Only fetch if we didn't get data from navigation params
     if (!route.params?.driver) {
       fetchDriverProfile();
     }
-  }, []);
-
-  const [profile, setProfile] = useState({});
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [profilePic, setProfilePic] = useState(
-    require("C:/Users/gaura/WebProjects/ExcelApp/Demo/DemoApp/assets/profile.png")
-  );
-  const [focusedField, setFocusedField] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      if (Platform.OS !== "web") {
-        const mediaStatus =
-          await ImagePicker.requestMediaLibraryPermissionsAsync();
-        const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-        if (
-          mediaStatus.status !== "granted" ||
-          cameraStatus.status !== "granted"
-        ) {
-          Alert.alert(
-            "Permission Required",
-            "Camera and gallery access needed."
-          );
-        }
-      }
-    })();
   }, []);
 
   const pickImage = () => {
@@ -166,50 +150,6 @@ const ProfileInfo = ({ navigation, route }) => {
     setProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === "ios");
-    if (selectedDate) {
-      handleChange("dob", selectedDate);
-    }
-  };
-
-  const handleSave = async () => {
-    if (
-      profile.newPassword &&
-      profile.newPassword !== profile.confirmPassword
-    ) {
-      Alert.alert("Error", "New passwords don't match");
-      return;
-    }
-
-    // Here you would typically send the data to your backend
-    console.log("Profile data to save:", profile);
-
-    const driverId = await getDriverId();
-    if (!driverId) {
-      navigation.navigate('Login');
-      return;
-    }
-
-    try {
-      await api.put(`/drivers/${driverId}`, profile);
-      // await refreshProfile();
-      Alert.alert("Success", "Profile updated successfully", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile');
-    }
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
   const handleFocus = (fieldName) => {
     setFocusedField(fieldName);
   };
@@ -218,6 +158,98 @@ const ProfileInfo = ({ navigation, route }) => {
     setFocusedField(null);
   };
 
+  const togglePasswordVisibility = (field) => {
+    setShowPassword((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+  const handleSave = async () => {
+    // Validate password fields
+    if (
+      profile.newPassword ||
+      profile.confirmPassword ||
+      profile.currentPassword
+    ) {
+      if (!profile.currentPassword) {
+        Alert.alert("Error", "Please enter your current password");
+        return;
+      }
+
+      if (profile.newPassword !== profile.confirmPassword) {
+        Alert.alert("Error", "New passwords don't match");
+        return;
+      }
+
+      if (profile.newPassword.length < 6) {
+        Alert.alert("Error", "Password must be at least 6 characters long");
+        return;
+      }
+    }
+
+    try {
+      // Get the driver's contact number from profile
+      const contact = profile.contact;
+      if (!contact) {
+        Alert.alert("Error", "Could not find your contact information");
+        return;
+      }
+
+      // Prepare data to send - matches your backend endpoint
+      const dataToSend = {
+        contact,
+        newPassword: profile.newPassword,
+        confirmPassword: profile.confirmPassword,
+        currentPassword: profile.currentPassword,
+        isReset: false, // Since this is a profile password change, not a reset
+      };
+
+      // Use the correct endpoint from your backend
+      const response = await api.post("/auth/change-password", dataToSend);
+
+      if (response.data.success) {
+        Alert.alert("Success", "Password updated successfully", [
+          {
+            text: "OK",
+            onPress: () => {
+              // Clear password fields after successful update
+              setProfile((prev) => ({
+                ...prev,
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+              }));
+            },
+          },
+        ]);
+      } else {
+        Alert.alert(
+          "Error",
+          response.data.message || "Failed to update password"
+        );
+      }
+    } catch (error) {
+      console.error("Password update error:", error);
+      let errorMessage = "Failed to update password";
+
+      if (error.response) {
+        // Handle different status codes
+        if (error.response.status === 404) {
+          errorMessage =
+            "Password update endpoint not found. Please contact support.";
+        } else if (error.response.status === 401) {
+          errorMessage = "Current password is incorrect";
+        } else if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        }
+      } else if (error.request) {
+        errorMessage =
+          "No response from server. Please check your internet connection.";
+      }
+
+      Alert.alert("Error", errorMessage);
+    }
+  };
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -239,134 +271,67 @@ const ProfileInfo = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Disabled fields - shown for reference but not editable */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>ID</Text>
         <TextInput
-          style={[
-            styles.input
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.driverId}
           editable={false}
-          selectTextOnFocus={false}
-          placeholder="Enter your ID"
         />
       </View>
+
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Full Name</Text>
+        <Text style={styles.label}>User Name</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "name" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.name}
-          onChangeText={(text) => handleChange("name", text)}
-          placeholder="Enter your full name"
-          onFocus={() => handleFocus("name")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Email</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "email" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.email}
-          onChangeText={(text) => handleChange("email", text)}
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          onFocus={() => handleFocus("email")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Phone Number</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "phone" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.contact}
-          onChangeText={(text) => handleChange("phone", text)}
-          placeholder="Enter your phone number"
-          keyboardType="phone-pad"
-          onFocus={() => handleFocus("phone")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Age</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "age" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.age}
-          onChangeText={(text) => handleChange("age", text)}
-          placeholder="Enter your age"
-          keyboardType="phone-pad"
-          onFocus={() => handleFocus("age")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
-
-      {/* <View style={styles.formGroup}>
-        <Text style={styles.label}>Date of Birth</Text>
-        <TouchableOpacity
-          style={[
-            styles.input,
-            styles.dateInput,
-            focusedField === "dob" && styles.inputFocused,
-          ]}
-          onPress={() => {
-            setShowDatePicker(true);
-            handleFocus("dob");
-          }}
-        >
-          <Text style={styles.dateText}>{formatDate(profile.dob)}</Text>
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={profile.dob}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={handleDateChange}
-            maximumDate={new Date()}
-          />
-        )}
-      </View> */}
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Address</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "address" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.address}
-          onChangeText={(text) => handleChange("address", text)}
-          placeholder="Enter your address"
-          onFocus={() => handleFocus("address")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Driver License Number</Text>
         <TextInput
-          style={[
-            styles.input,
-            focusedField === "licenseNumber" && styles.inputFocused,
-          ]}
+          style={[styles.input, styles.disabledInput]}
           value={profile.licenseNumber}
-          onChangeText={(text) => handleChange("licenseNumber", text)}
-          placeholder="Enter your license number"
-          onFocus={() => handleFocus("licenseNumber")}
-          onBlur={handleBlur}
+          editable={false}
         />
       </View>
 
@@ -376,59 +341,100 @@ const ProfileInfo = ({ navigation, route }) => {
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Current Password</Text>
-        <TextInput
+        <View
           style={[
-            styles.input,
-            focusedField === "currentPassword" && styles.inputFocused,
+            styles.passwordInputContainer,
+            focusedField === "currentPassword" && styles.inputFocusedContainer,
           ]}
-          value={profile.currentPassword}
-          onChangeText={(text) => handleChange("currentPassword", text)}
-          placeholder="Enter current password"
-          secureTextEntry
-          onFocus={() => handleFocus("currentPassword")}
-          onBlur={handleBlur}
-        />
+        >
+          <TextInput
+            style={styles.passwordInput}
+            value={profile.currentPassword}
+            onChangeText={(text) => handleChange("currentPassword", text)}
+            placeholder="Enter current password"
+            secureTextEntry={!showPassword.current}
+            onFocus={() => handleFocus("currentPassword")}
+            onBlur={handleBlur}
+          />
+          <TouchableOpacity
+            onPress={() => togglePasswordVisibility("current")}
+            style={styles.eyeIcon}
+          >
+            <Icon
+              name={showPassword.current ? "visibility" : "visibility-off"}
+              size={20}
+              color="#800000"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>New Password</Text>
-        <TextInput
+        <View
           style={[
-            styles.input,
-            focusedField === "newPassword" && styles.inputFocused,
+            styles.passwordInputContainer,
+            focusedField === "newPassword" && styles.inputFocusedContainer,
           ]}
-          value={profile.newPassword}
-          onChangeText={(text) => handleChange("newPassword", text)}
-          placeholder="Enter new password"
-          secureTextEntry
-          onFocus={() => handleFocus("newPassword")}
-          onBlur={handleBlur}
-        />
+        >
+          <TextInput
+            style={styles.passwordInput}
+            value={profile.newPassword}
+            onChangeText={(text) => handleChange("newPassword", text)}
+            placeholder="Enter new password"
+            secureTextEntry={!showPassword.new}
+            onFocus={() => handleFocus("newPassword")}
+            onBlur={handleBlur}
+          />
+          <TouchableOpacity
+            onPress={() => togglePasswordVisibility("new")}
+            style={styles.eyeIcon}
+          >
+            <Icon
+              name={showPassword.new ? "visibility" : "visibility-off"}
+              size={20}
+              color="#800000"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Confirm New Password</Text>
-        <TextInput
+        <View
           style={[
-            styles.input,
-            focusedField === "confirmPassword" && styles.inputFocused,
+            styles.passwordInputContainer,
+            focusedField === "confirmPassword" && styles.inputFocusedContainer,
           ]}
-          value={profile.confirmPassword}
-          onChangeText={(text) => handleChange("confirmPassword", text)}
-          placeholder="Confirm new password"
-          secureTextEntry
-          onFocus={() => handleFocus("confirmPassword")}
-          onBlur={handleBlur}
-        />
+        >
+          <TextInput
+            style={styles.passwordInput}
+            value={profile.confirmPassword}
+            onChangeText={(text) => handleChange("confirmPassword", text)}
+            placeholder="Confirm new password"
+            secureTextEntry={!showPassword.confirm}
+            onFocus={() => handleFocus("confirmPassword")}
+            onBlur={handleBlur}
+          />
+          <TouchableOpacity
+            onPress={() => togglePasswordVisibility("confirm")}
+            style={styles.eyeIcon}
+          >
+            <Icon
+              name={showPassword.confirm ? "visibility" : "visibility-off"}
+              size={20}
+              color="#800000"
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Save Changes</Text>
+        <Text style={styles.saveButtonText}>Update Password</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -515,6 +521,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
+  disabledInput: {
+    color: "#888",
+  },
   inputFocused: {
     borderColor: "#800000",
     borderWidth: 2,
@@ -549,6 +558,27 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 17,
+  },
+  passwordInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    paddingRight: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 10,
+    fontSize: 16,
+  },
+  inputFocusedContainer: {
+    borderColor: "#800000",
+    borderWidth: 2,
+  },
+  eyeIcon: {
+    padding: 5,
   },
 });
 

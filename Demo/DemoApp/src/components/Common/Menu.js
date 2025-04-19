@@ -17,7 +17,7 @@ const MENU_WIDTH = width * 0.7;
 const Menu = ({ onSelect, onLogout, visible, onClose }) => {
   const menuItems = [
     {
-      title: "Personal Information",
+      title: "My Profile",
       icon: "person-outline",
       screen: "Profile",
     },
@@ -26,11 +26,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
       icon: "history",
       screen: "History",
     },
-    {
-      title: "Language Settings",
-      icon: "language",
-      screen: "Language",
-    },
+
     {
       title: "Logout",
       icon: "exit-to-app",
