@@ -16,6 +16,8 @@ const { width } = Dimensions.get("window");
 const MENU_WIDTH = width * 0.7;
 
 const Menu = ({ onSelect, onLogout, visible, onClose }) => {
+  const [driverName, setDriverName] = React.useState("User");
+  const slideAnim = React.useRef(new Animated.Value(MENU_WIDTH)).current;
   const menuItems = [
     {
       title: "My Profile",
@@ -59,19 +61,25 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
 
   const getDriverName = async () => {
     const driverData = await getDriverData();
-    return driverData.name? driverData.name : "User";
+    return driverData.name ? driverData.name : "User";
   };
-
-  const slideAnim = React.useRef(new Animated.Value(MENU_WIDTH)).current;
 
   React.useEffect(() => {
     if (visible) {
+      // Animate slide-in
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start();
+
+      // Fetch driver name
+      (async () => {
+        const driverData = await getDriverData();
+        setDriverName(driverData?.name || "User");
+      })();
     } else {
+      // Animate slide-out
       Animated.timing(slideAnim, {
         toValue: MENU_WIDTH,
         duration: 300,
@@ -79,7 +87,6 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
       }).start();
     }
   }, [visible]);
-
 
   return (
     <>
@@ -113,7 +120,7 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
             />
           </View>
           <Text style={styles.greetingText}>Hello,</Text>
-          <Text style={styles.userName}>{getDriverName()}</Text>
+          <Text style={styles.userName}>{driverName}</Text>
         </View>
 
         {/* Menu Items */}
