@@ -159,7 +159,7 @@ router.post("/change-password", async (req, res) => {
       return res.status(400).json({ message: "Current Password is required" });
     }
 
-    if (newPassword === confirmPassword) {
+    if (newPassword === currentPassword) {
       return res.status(400).json({ message: "New Password must be different" });
     }
 
