@@ -8,6 +8,7 @@ import {
   Dimensions,
   Image,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { getDriverData } from "../../utils/auth";
@@ -17,7 +18,10 @@ const MENU_WIDTH = width * 0.7;
 
 const Menu = ({ onSelect, onLogout, visible, onClose }) => {
   const [driverName, setDriverName] = React.useState("User");
+  const [profilePic, setProfilePic] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
   const slideAnim = React.useRef(new Animated.Value(MENU_WIDTH)).current;
+
   const menuItems = [
     {
       title: "My Profile",
@@ -29,7 +33,6 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
       icon: "history",
       screen: "History",
     },
-
     {
       title: "Logout",
       icon: "exit-to-app",
@@ -59,11 +62,6 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
     );
   };
 
-  const getDriverName = async () => {
-    const driverData = await getDriverData();
-    return driverData.name ? driverData.name : "User";
-  };
-
   React.useEffect(() => {
     if (visible) {
       // Animate slide-in
@@ -73,11 +71,8 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
         useNativeDriver: true,
       }).start();
 
-      // Fetch driver name
-      (async () => {
-        const driverData = await getDriverData();
-        setDriverName(driverData?.name || "User");
-      })();
+      // Fetch driver data
+      fetchDriverData();
     } else {
       // Animate slide-out
       Animated.timing(slideAnim, {
@@ -87,6 +82,28 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
       }).start();
     }
   }, [visible]);
+
+  const fetchDriverData = async () => {
+    try {
+      setLoading(true);
+      const driverData = await getDriverData();
+
+      if (driverData) {
+        setDriverName(driverData?.name || "User");
+        // Set profile picture if available, otherwise use default
+        if (driverData.profilePic) {
+          setProfilePic({ uri: driverData.profilePic });
+        } else {
+          setProfilePic(require(".././../../assets/profile.png")); // Your default profile image
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching driver data:", error);
+      setProfilePic(require(".././../../assets/profile.png")); // Fallback to default image
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -113,12 +130,18 @@ const Menu = ({ onSelect, onLogout, visible, onClose }) => {
 
         {/* User Profile Section */}
         <View style={styles.profileSection}>
-          <View style={styles.profilePicContainer}>
-            <Image
-              source={require("./logo.png")} // Replace with your image
-              style={styles.profilePic}
-            />
-          </View>
+          {loading ? (
+            <View style={styles.profilePicContainer}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.profilePicContainer}>
+              <Image
+                source={profilePic || require(".././../../assets/profile.png")}
+                style={styles.profilePic}
+              />
+            </View>
+          )}
           <Text style={styles.greetingText}>Hello,</Text>
           <Text style={styles.userName}>{driverName}</Text>
         </View>
@@ -184,11 +207,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 10,
+    overflow: "hidden",
   },
   profilePic: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: "100%",
+    height: "100%",
   },
   greetingText: {
     color: "#fff",

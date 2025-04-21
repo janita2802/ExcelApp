@@ -9,9 +9,11 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import api from "../../utils/api";
 import { getDriverId } from "../../utils/auth";
 
@@ -24,10 +26,14 @@ const ProfileInfo = ({ navigation, route }) => {
     age: "",
     address: "",
     licenseNumber: "",
+  });
+
+  const [password, setPassword] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [profilePic, setProfilePic] = useState(
     require("./.././../../assets/profile.png")
   );
@@ -37,6 +43,8 @@ const ProfileInfo = ({ navigation, route }) => {
     new: false,
     confirm: false,
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
   useEffect(() => {
     if (route.params?.driver) {
@@ -79,6 +87,7 @@ const ProfileInfo = ({ navigation, route }) => {
           age: String(driverData.age) || "",
           address: driverData.address || "",
           licenseNumber: driverData.licenseNumber || "",
+          profilePic: driverData.profilePic || null,
         }));
 
         if (driverData.profilePic) {
@@ -95,7 +104,7 @@ const ProfileInfo = ({ navigation, route }) => {
     }
   }, []);
 
-  const pickImage = () => {
+  const pickImage = async () => {
     Alert.alert(
       "Upload Photo",
       "Choose an option",
@@ -114,11 +123,25 @@ const ProfileInfo = ({ navigation, route }) => {
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: true,
               aspect: [1, 1],
-              quality: 1,
+              quality: 0.7,
             });
 
-            if (!result.canceled) {
-              setProfilePic({ uri: result.assets[0].uri });
+            if (!result.canceled && result.assets && result.assets[0]) {
+              try {
+                const compressedImage = await ImageManipulator.manipulateAsync(
+                  result.assets[0].uri,
+                  [{ resize: { width: 500 } }],
+                  { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                );
+                setProfilePic({ uri: compressedImage.uri });
+                await uploadProfilePicture(compressedImage.uri); // Immediately upload
+              } catch (error) {
+                console.error("Image processing error:", error);
+                setUploadStatus({
+                  type: "error",
+                  message: "Failed to process image",
+                });
+              }
             }
           },
         },
@@ -129,11 +152,25 @@ const ProfileInfo = ({ navigation, route }) => {
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsEditing: true,
               aspect: [1, 1],
-              quality: 1,
+              quality: 0.7,
             });
 
-            if (!result.canceled) {
-              setProfilePic({ uri: result.assets[0].uri });
+            if (!result.canceled && result.assets && result.assets[0]) {
+              try {
+                const compressedImage = await ImageManipulator.manipulateAsync(
+                  result.assets[0].uri,
+                  [{ resize: { width: 500 } }],
+                  { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                );
+                setProfilePic({ uri: compressedImage.uri });
+                await uploadProfilePicture(compressedImage.uri); // Immediately upload
+              } catch (error) {
+                console.error("Image processing error:", error);
+                setUploadStatus({
+                  type: "error",
+                  message: "Failed to process image",
+                });
+              }
             }
           },
         },
@@ -146,8 +183,12 @@ const ProfileInfo = ({ navigation, route }) => {
     );
   };
 
-  const handleChange = (name, value) => {
+  const handleProfileChange = (name, value) => {
     setProfile((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordChange = (name, value) => {
+    setPassword((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFocus = (fieldName) => {
@@ -164,46 +205,98 @@ const ProfileInfo = ({ navigation, route }) => {
       [field]: !prev[field],
     }));
   };
-  const handleSave = async () => {
-    // Validate password fields
-    if (
-      profile.newPassword ||
-      profile.confirmPassword ||
-      profile.currentPassword
-    ) {
-      if (!profile.currentPassword) {
-        Alert.alert("Error", "Please enter your current password");
-        return;
-      }
 
-      if (profile.newPassword !== profile.confirmPassword) {
-        Alert.alert("Error", "New passwords don't match");
-        return;
-      }
-
-      if (profile.newPassword.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters long");
-        return;
-      }
+  const uploadProfilePicture = async (imageUri) => {
+    if (!imageUri || !imageUri.startsWith("file://")) {
+      return null;
     }
 
     try {
-      // Get the driver's contact number from profile
-      const contact = profile.contact;
-      if (!contact) {
-        Alert.alert("Error", "Could not find your contact information");
-        return;
+      setUploadStatus({ type: "loading", message: "Uploading..." });
+
+      const driverId = await getDriverId();
+      const formData = new FormData();
+      formData.append("profilePic", {
+        uri: imageUri,
+        name: `profile-${driverId}.jpg`,
+        type: "image/jpeg",
+      });
+
+      const response = await api.post(
+        `/drivers/${driverId}/profile-pic`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setProfilePic({ uri: response.data.profilePic });
+      setUploadStatus({ type: "success", message: "Profile picture updated!" });
+
+      // Clear the status after 3 seconds
+      setTimeout(() => setUploadStatus(null), 3000);
+
+      return response.data.profilePic;
+    } catch (error) {
+      console.error("Profile picture upload error:", error);
+      setUploadStatus({ type: "error", message: "Upload failed" });
+      throw new Error("Failed to upload profile picture");
+    }
+  };
+
+  const updateProfile = async () => {
+    setIsLoading(true);
+    try {
+      // Upload profile picture if changed
+      let newProfilePicUrl = null;
+      if (profilePic.uri && profilePic.uri.startsWith("file://")) {
+        newProfilePicUrl = await uploadProfilePicture();
       }
 
-      // Prepare data to send - matches your backend endpoint
+      // Update local state if picture was uploaded
+      if (newProfilePicUrl) {
+        setProfilePic({ uri: newProfilePicUrl });
+      }
+
+      Alert.alert("Success", "Profile updated successfully");
+    } catch (error) {
+      console.error("Profile update error:", error);
+      Alert.alert("Error", "Failed to update profile");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const changePassword = async () => {
+    setIsPasswordLoading(true);
+    try {
+      // Validate password fields
+      if (!password.currentPassword) {
+        throw new Error("Current password is required");
+      }
+
+      if (!password.newPassword) {
+        throw new Error("New password is required");
+      }
+
+      if (password.newPassword !== password.confirmPassword) {
+        throw new Error("New passwords don't match");
+      }
+
+      if (password.newPassword.length < 6) {
+        throw new Error("Password must be at least 6 characters long");
+      }
+
+      // Prepare data to send
       const dataToSend = {
-        contact,
-        newPassword: profile.newPassword,
-        currentPassword: profile.currentPassword,
-        isReset: false, // Since this is a profile password change, not a reset
+        contact: profile.contact,
+        newPassword: password.newPassword,
+        currentPassword: password.currentPassword,
+        isReset: false,
       };
 
-      // Use the correct endpoint from your backend
       const response = await api.post("/auth/change-password", dataToSend);
 
       if (response.data.success) {
@@ -212,20 +305,16 @@ const ProfileInfo = ({ navigation, route }) => {
             text: "OK",
             onPress: () => {
               // Clear password fields after successful update
-              setProfile((prev) => ({
-                ...prev,
+              setPassword({
                 currentPassword: "",
                 newPassword: "",
                 confirmPassword: "",
-              }));
+              });
             },
           },
         ]);
       } else {
-        Alert.alert(
-          "Error",
-          response.data.message || "Failed to update password"
-        );
+        throw new Error(response.data.message || "Failed to update password");
       }
     } catch (error) {
       console.error("Password update error:", error);
@@ -244,11 +333,16 @@ const ProfileInfo = ({ navigation, route }) => {
       } else if (error.request) {
         errorMessage =
           "No response from server. Please check your internet connection.";
+      } else {
+        errorMessage = error.message || "Failed to update password";
       }
 
       Alert.alert("Error", errorMessage);
+    } finally {
+      setIsPasswordLoading(false);
     }
   };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -265,12 +359,24 @@ const ProfileInfo = ({ navigation, route }) => {
             <Icon name="photo-camera" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.changePhotoBtn} onPress={pickImage}>
-          <Text style={styles.changePhotoText}>Change Profile Photo</Text>
-        </TouchableOpacity>
+        {uploadStatus && (
+          <Text
+            style={[
+              styles.uploadStatus,
+              uploadStatus.type === "success"
+                ? styles.uploadSuccess
+                : uploadStatus.type === "error"
+                ? styles.uploadError
+                : styles.uploadLoading,
+            ]}
+          >
+            {uploadStatus.message}
+          </Text>
+        )}
+
+        <Text style={styles.changePhotoText}>Change Profile Photo</Text>
       </View>
 
-      {/* Disabled fields - shown for reference but not editable */}
       <View style={styles.formGroup}>
         <Text style={styles.label}>ID</Text>
         <TextInput
@@ -335,7 +441,7 @@ const ProfileInfo = ({ navigation, route }) => {
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>Password Settings</Text>
+        <Text style={styles.sectionHeaderText}>Change Password</Text>
       </View>
 
       <View style={styles.formGroup}>
@@ -348,8 +454,10 @@ const ProfileInfo = ({ navigation, route }) => {
         >
           <TextInput
             style={styles.passwordInput}
-            value={profile.currentPassword}
-            onChangeText={(text) => handleChange("currentPassword", text)}
+            value={password.currentPassword}
+            onChangeText={(text) =>
+              handlePasswordChange("currentPassword", text)
+            }
             placeholder="Enter current password"
             secureTextEntry={!showPassword.current}
             onFocus={() => handleFocus("currentPassword")}
@@ -378,8 +486,8 @@ const ProfileInfo = ({ navigation, route }) => {
         >
           <TextInput
             style={styles.passwordInput}
-            value={profile.newPassword}
-            onChangeText={(text) => handleChange("newPassword", text)}
+            value={password.newPassword}
+            onChangeText={(text) => handlePasswordChange("newPassword", text)}
             placeholder="Enter new password"
             secureTextEntry={!showPassword.new}
             onFocus={() => handleFocus("newPassword")}
@@ -408,8 +516,10 @@ const ProfileInfo = ({ navigation, route }) => {
         >
           <TextInput
             style={styles.passwordInput}
-            value={profile.confirmPassword}
-            onChangeText={(text) => handleChange("confirmPassword", text)}
+            value={password.confirmPassword}
+            onChangeText={(text) =>
+              handlePasswordChange("confirmPassword", text)
+            }
             placeholder="Confirm new password"
             secureTextEntry={!showPassword.confirm}
             onFocus={() => handleFocus("confirmPassword")}
@@ -428,12 +538,21 @@ const ProfileInfo = ({ navigation, route }) => {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Update Password</Text>
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={changePassword}
+        disabled={isPasswordLoading}
+      >
+        {isPasswordLoading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.saveButtonText}>Change Password</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -532,14 +651,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  dateInput: {
-    justifyContent: "center",
-  },
-  dateText: {
-    fontSize: 16,
-    color: "#333",
-    paddingVertical: 2,
-  },
   saveButton: {
     backgroundColor: "#800000",
     padding: 16,
@@ -578,6 +689,20 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 5,
+  },
+  uploadStatus: {
+    marginTop: 10,
+    textAlign: "center",
+    fontSize: 14,
+  },
+  uploadSuccess: {
+    color: "green",
+  },
+  uploadError: {
+    color: "red",
+  },
+  uploadLoading: {
+    color: "#800000",
   },
 });
 

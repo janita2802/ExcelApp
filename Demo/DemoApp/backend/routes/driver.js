@@ -1,7 +1,75 @@
 const express = require("express");
 const router = express.Router();
 const Driver = require("../models/Driver");
+const multer = require("multer");
+const { storage } = require("../config/firebase");
+const {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} = require("firebase-admin/storage");
 
+// Configure multer for memory storage
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+router.post(
+  "/:driverId/profile-pic",
+  upload.single("profilePic"),
+  async (req, res) => {
+    try {
+      const { driverId } = req.params;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Create a reference to the file
+      const fileRef = storage
+        .bucket()
+        .file(`driver-profiles/${driverId}/profile-pic-${Date.now()}`);
+
+      // Create metadata
+      const metadata = {
+        contentType: req.file.mimetype,
+      };
+
+      // Upload the file
+      await fileRef.save(req.file.buffer, {
+        metadata,
+        public: true, // Make the file publicly accessible
+      });
+
+      // Get the public URL
+      const downloadURL = `https://storage.googleapis.com/${
+        storage.bucket().name
+      }/${fileRef.name}`;
+
+      // Update driver record
+      const updatedDriver = await Driver.findOneAndUpdate(
+        { driverId },
+        { profilePic: downloadURL },
+        { new: true }
+      );
+
+      if (!updatedDriver) {
+        return res.status(404).json({ error: "Driver not found" });
+      }
+
+      res.json({
+        message: "Profile picture uploaded successfully",
+        profilePic: downloadURL,
+      });
+    } catch (err) {
+      console.error("Error uploading profile picture:", err);
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 // Create Driver
 router.post("/", async (req, res) => {
   try {

@@ -19,6 +19,7 @@ const DriverSchema = new mongoose.Schema({
   licenseNumber: { type: String, required: true, unique: true },
   createdAt: { type: Date, default: Date.now },
   password: { type: String, required: true },
+  profilePic: { type: String }, // Add this line for profile picture URL
 });
 
 // Hash password before saving

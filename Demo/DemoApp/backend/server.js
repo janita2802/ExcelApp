@@ -10,22 +10,22 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
   "http://localhost:8081",
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like server-to-server, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true, // Enable cookies/auth headers if needed
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
-  allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
-};
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     // Allow requests with no origin (like server-to-server, curl, etc.)
+//     if (!origin) return callback(null, true);
+//     if (allowedOrigins.includes(origin)) {
+//       return callback(null, true);
+//     } else {
+//       return callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true, // Enable cookies/auth headers if needed
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowed HTTP methods
+//   allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+// };
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 
 app.use(express.json());
 

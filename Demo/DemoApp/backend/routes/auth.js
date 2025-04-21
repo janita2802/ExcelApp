@@ -47,6 +47,7 @@ router.post("/login", async (req, res) => {
         name: driver.name,
         email: driver.email,
         contact: driver.contact,
+        profilePic: driver.profilePic,
       },
     });
   } catch (error) {
