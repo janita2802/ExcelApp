@@ -1,11 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const DutySlip = require("../models/DutySlip");
-const multer = require("multer");
-
-// Use memory storage to keep uploaded images in memory as buffers
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
 
 // GET duty slip by ID
 router.get("/:id", async (req, res) => {
@@ -39,66 +34,60 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST trip completion (with FormData + images)
-router.post(
-  "/:id/complete",
-  upload.fields([{ name: "startKmImage" }, { name: "endKmImage" }]),
-  async (req, res) => {
-    try {
-      const { id } = req.params;
+// POST trip completion (with Firebase Storage URLs)
+router.post("/:id/complete", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      manualStartKm,
+      manualEndKm,
+      startKmImageUrl,
+      endKmImageUrl,
+      customerSignatureUrl,
+      tollFees = 0,
+      parkingFees = 0,
+      timestampStart,
+      timestampEnd,
+    } = req.body;
 
-      const {
-        manualStartKm,
-        manualEndKm,
-        timestampStart,
-        timestampEnd,
-        customerSignature,
-        tollFees = 0,
-        parkingFees = 0,
-      } = req.body;
-
-      const startKmImage = req.files?.startKmImage?.[0];
-      const endKmImage = req.files?.endKmImage?.[0];
-
-      if (!manualStartKm || !manualEndKm || !startKmImage || !endKmImage) {
-        return res
-          .status(400)
-          .json({ message: "Missing required fields or images" });
-      }
-
-      const updatedSlip = await DutySlip.findOneAndUpdate(
-        { dutySlipId: id },
-        {
-          $set: {
-            startKM: manualStartKm,
-            startKMPhoto: startKmImage.buffer, // save as buffer
-            endKM: manualEndKm,
-            endKMPhoto: endKmImage.buffer, // save as buffer
-            customerSignature: customerSignature || null,
-            tollFees: parseFloat(tollFees),
-            parkingFees: parseFloat(parkingFees),
-            startTime: timestampStart,
-            endTime: timestampEnd,
-            modifiedAt: new Date(),
-            status: "completed",
-          },
-        },
-        { new: true }
-      );
-
-      if (!updatedSlip) {
-        return res.status(404).json({ message: "Duty slip not found" });
-      }
-
-      res.json({
-        message: "Trip data saved successfully",
-        dutySlip: updatedSlip,
-      });
-    } catch (error) {
-      console.error("Error saving trip data:", error);
-      res.status(500).json({ message: "Server error" });
+    if (!manualStartKm || !manualEndKm || !startKmImageUrl || !endKmImageUrl) {
+      return res
+        .status(400)
+        .json({ message: "Missing required fields or image URLs" });
     }
+
+    const updatedSlip = await DutySlip.findOneAndUpdate(
+      { dutySlipId: id },
+      {
+        $set: {
+          startKM: manualStartKm,
+          startKMPhoto: startKmImageUrl,
+          endKM: manualEndKm,
+          endKMPhoto: endKmImageUrl,
+          customerSignature: customerSignatureUrl || null,
+          tollFees: parseFloat(tollFees),
+          parkingFees: parseFloat(parkingFees),
+          startTime: timestampStart,
+          endTime: timestampEnd,
+          modifiedAt: new Date(),
+          status: "completed",
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedSlip) {
+      return res.status(404).json({ message: "Duty slip not found" });
+    }
+
+    res.json({
+      message: "Trip data saved successfully",
+      dutySlip: updatedSlip,
+    });
+  } catch (error) {
+    console.error("Error saving trip data:", error);
+    res.status(500).json({ message: "Server error" });
   }
-);
+});
 
 module.exports = router;

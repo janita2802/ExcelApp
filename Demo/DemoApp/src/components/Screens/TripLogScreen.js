@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import DutyInfoPreview from "./DutyInfoPreview";
-// import axios from "axios";
 import api from "../../utils/api";
 import {
   View,
@@ -19,11 +18,30 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from 'expo-file-system';
 import SignatureScreen from "react-native-signature-canvas";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { initializeApp } from "firebase/app";
+import Constants from 'expo-constants';
+
+// Initialize Firebase
+const firebaseConfig = {
+  apiKey: Constants.expoConfig.extra.FIREBASE_API_KEY,
+  authDomain: Constants.expoConfig.extra.FIREBASE_AUTH_DOMAIN,
+  projectId: Constants.expoConfig.extra.FIREBASE_YOUR_PROJECT_ID,
+  storageBucket: Constants.expoConfig.extra.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: Constants.expoConfig.extra.FIREBASE_YOUR_SENDER_ID,
+  appId: Constants.expoConfig.extra.FIREBASE_APP_ID,
+  measurementId: Constants.expoConfig.extra.FIREBASE_MEASUREMENT_ID
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const storage = getStorage(app);
 
 const TripLogScreen = ({ navigation, route }) => {
   const { dutySlipData } = route.params;
@@ -112,11 +130,22 @@ const TripLogScreen = ({ navigation, route }) => {
     });
 
     if (!result.canceled && result.assets) {
-      const uri = result.assets[0].uri;
-      if (currentImageType === "start") {
-        setStartKmImage(uri);
-      } else {
-        setEndKmImage(uri);
+      try {
+        // Compress the image
+        const compressedImage = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 800 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+
+        if (currentImageType === "start") {
+          setStartKmImage(compressedImage.uri);
+        } else {
+          setEndKmImage(compressedImage.uri);
+        }
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        Alert.alert("Error", "Failed to process image");
       }
     }
     setShowImagePicker(false);
@@ -137,11 +166,22 @@ const TripLogScreen = ({ navigation, route }) => {
     });
 
     if (!result.canceled && result.assets) {
-      const uri = result.assets[0].uri;
-      if (currentImageType === "start") {
-        setStartKmImage(uri);
-      } else {
-        setEndKmImage(uri);
+      try {
+        // Compress the image
+        const compressedImage = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 800 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+
+        if (currentImageType === "start") {
+          setStartKmImage(compressedImage.uri);
+        } else {
+          setEndKmImage(compressedImage.uri);
+        }
+      } catch (error) {
+        console.error("Error compressing image:", error);
+        Alert.alert("Error", "Failed to process image");
       }
     }
     setShowImagePicker(false);
@@ -220,6 +260,55 @@ const TripLogScreen = ({ navigation, route }) => {
     }
   };
 
+  // Improved Firebase upload function with better error handling
+  const uploadImageToFirebase = async (uri, path) => {
+    console.log("Janita is beautifool - uri: " + uri + " path: " + path);
+    try {
+      // Check if URI is base64 (signature) or file URI
+      let blob;
+      if (uri.startsWith('data:')) {
+        console.log("data");
+        // Handle base64 signature
+        const response = await fetch(uri);
+        console.log(response);
+        blob = await response.blob();
+        console.log(blob);
+      } else {
+        console.log("else Janita is nub");
+        // Handle file URI
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        console.log("fileInfo: " + fileInfo);
+        if (!fileInfo.exists) {
+          throw new Error('File does not exist');
+        }
+        const fileContent = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const blob = new Blob([fileContent], { type: 'image/jpeg' });
+        // console.log("file content: " + fileContent);
+        console.log("blob: " + blob);
+      }
+
+      const storageRef = ref(storage, path);
+      console.log("storage ref: " + storageRef)
+      const uploadTask = uploadBytes(storageRef, blob);
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Upload timeout')), 30000)
+      );
+
+      await Promise.race([uploadTask, timeoutPromise]);
+      const downloadURL = await getDownloadURL(storageRef);
+      return downloadURL;
+    } catch (error) {
+      console.log(error);
+      console.error("Error uploading image:", error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+  };
+
+  // Enhanced submit function with better error handling
   const submitTripData = async () => {
     setIsSubmitting(true);
 
@@ -231,96 +320,88 @@ const TripLogScreen = ({ navigation, route }) => {
     try {
       const getCurrentTime = () => {
         const now = new Date();
-        const hours = String(now.getHours()).padStart(2, "0");
-        const minutes = String(now.getMinutes()).padStart(2, "0");
-        return `${hours}:${minutes}`;
+        return now.toISOString();
       };
 
-      const formData = new FormData();
+      // Show loading state
+      Alert.alert("Uploading", "Please wait while we upload your images...", [], {
+        cancelable: false
+      });
 
-      // Start KM Image
-      if (startKmImage) {
-        formData.append("startKmImage", {
-          uri: startKmImage,
-          type: "image/jpeg",
-          name: "start_km.jpg",
-        });
-      }
+      // Upload images sequentially with error handling
+      let startKmImageUrl, endKmImageUrl, signatureUrl;
 
-      // End KM Image
-      if (endKmImage) {
-        formData.append("endKmImage", {
-          uri: endKmImage,
-          type: "image/jpeg",
-          name: "end_km.jpg",
-        });
-      }
-
-      // Add signature (as base64 string, since no file uri)
-      if (signature) {
-        formData.append(
-          "customerSignature",
-          `data:image/png;base64,${signature}`
+      try {
+        startKmImageUrl = await uploadImageToFirebase(
+          startKmImage,
+          `duty-slips/${dutySlipId}/start-km.jpg`
         );
+      } catch (error) {
+        throw new Error(`Failed to upload start KM image: ${error.message}`);
       }
 
-      // Add other fields
-      formData.append("manualStartKm", manualStartKm);
-      formData.append("manualEndKm", manualEndKm);
-      formData.append("timestampStart", getCurrentTime());
-      formData.append("timestampEnd", getCurrentTime());
-      formData.append("tollFees", "0");
-      formData.append("parkingFees", "0");
+      try {
+        endKmImageUrl = await uploadImageToFirebase(
+          endKmImage,
+          `duty-slips/${dutySlipId}/end-km.jpg`
+        );
+      } catch (error) {
+        throw new Error(`Failed to upload end KM image: ${error.message}`);
+      }
 
-      console.log("📤 Submitting trip data as FormData...");
+      if (signature) {
+        try {
+          signatureUrl = await uploadImageToFirebase(
+            `data:image/png;base64,${signature}`,
+            `duty-slips/${dutySlipId}/signature.png`
+          );
+        } catch (error) {
+          console.warn("Signature upload failed, continuing without it");
+        }
+      }
+
+      const tripData = {
+        manualStartKm,
+        manualEndKm,
+        startKmImageUrl,
+        endKmImageUrl,
+        customerSignatureUrl: signatureUrl || null,
+        timestampStart: getCurrentTime(),
+        timestampEnd: getCurrentTime(),
+        tollFees: "0",
+        parkingFees: "0",
+      };
+
+      console.log("Janita is superb harami - " + tripData)
 
       const response = await api.post(
         `/duty-slips/${dutySlipId}/complete`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          maxContentLength: 50 * 1024 * 1024,
-          maxBodyLength: 50 * 1024 * 1024,
-          timeout: 30000,
-        }
+        tripData
       );
-
-      console.log("✅ API Response:", response.data);
-
-      if (
-        response.data.success ||
-        response.data.message === "Trip data saved successfully"
-      ) {
-        Alert.alert("Success", "Trip data submitted successfully!", [
-          {
-            text: "OK",
-            onPress: () => navigation.navigate("Main"),
-          },
-        ]);
-      } else {
-        throw new Error(
-          response.data.message || "Unexpected response from server"
-        );
-      }
+      console.log(response);
+      
+      Alert.alert(
+        "Success", 
+        "Trip data submitted successfully!",
+        [{ text: "OK", onPress: () => navigation.navigate("Main") }]
+      );
+      
     } catch (error) {
+      console.log(error);
       console.error("❌ Submission error:", error);
+      let errorMessage = error.message || "Failed to submit trip data";
+      console.log(errorMessage);
 
-      let errorMessage = "Failed to submit trip data. Please try again.";
-
-      if (error.response) {
-        errorMessage =
-          error.response.data.message ||
-          `Server error: ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage =
-          "No response from server. Check your network connection.";
-      } else {
-        errorMessage = error.message || "An unexpected error occurred";
+      // Handle specific Firebase errors
+      if (error.message.includes('storage/')) {
+        errorMessage = "Image upload failed. Please check your internet connection and try again.";
       }
 
-      Alert.alert("Error", errorMessage);
+      Alert.alert(
+        "Error",
+        errorMessage,
+        [{ text: "OK", onPress: () => setIsSubmitting(false) }]
+      );
     } finally {
       setIsSubmitting(false);
     }
