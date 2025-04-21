@@ -262,22 +262,16 @@ const TripLogScreen = ({ navigation, route }) => {
 
   // Improved Firebase upload function with better error handling
   const uploadImageToFirebase = async (uri, path) => {
-    console.log("Janita is beautifool - uri: " + uri + " path: " + path);
     try {
       // Check if URI is base64 (signature) or file URI
       let blob;
       if (uri.startsWith('data:')) {
-        console.log("data");
         // Handle base64 signature
         const response = await fetch(uri);
-        console.log(response);
         blob = await response.blob();
-        console.log(blob);
       } else {
-        console.log("else Janita is nub");
         // Handle file URI
         const fileInfo = await FileSystem.getInfoAsync(uri);
-        console.log("fileInfo: " + fileInfo);
         if (!fileInfo.exists) {
           throw new Error('File does not exist');
         }
@@ -285,12 +279,9 @@ const TripLogScreen = ({ navigation, route }) => {
           encoding: FileSystem.EncodingType.Base64,
         });
         const blob = new Blob([fileContent], { type: 'image/jpeg' });
-        // console.log("file content: " + fileContent);
-        console.log("blob: " + blob);
       }
 
       const storageRef = ref(storage, path);
-      console.log("storage ref: " + storageRef)
       const uploadTask = uploadBytes(storageRef, blob);
 
       // Add timeout to prevent hanging
@@ -302,8 +293,6 @@ const TripLogScreen = ({ navigation, route }) => {
       const downloadURL = await getDownloadURL(storageRef);
       return downloadURL;
     } catch (error) {
-      console.log(error);
-      console.error("Error uploading image:", error);
       throw new Error(`Upload failed: ${error.message}`);
     }
   };
@@ -372,13 +361,10 @@ const TripLogScreen = ({ navigation, route }) => {
         parkingFees: "0",
       };
 
-      console.log("Janita is superb harami - " + tripData)
-
       const response = await api.post(
         `/duty-slips/${dutySlipId}/complete`,
         tripData
       );
-      console.log(response);
       
       Alert.alert(
         "Success", 
@@ -387,10 +373,8 @@ const TripLogScreen = ({ navigation, route }) => {
       );
       
     } catch (error) {
-      console.log(error);
       console.error("❌ Submission error:", error);
       let errorMessage = error.message || "Failed to submit trip data";
-      console.log(errorMessage);
 
       // Handle specific Firebase errors
       if (error.message.includes('storage/')) {
