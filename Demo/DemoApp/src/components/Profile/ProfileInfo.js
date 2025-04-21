@@ -15,7 +15,7 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import api from "../../utils/api";
-import { getDriverId } from "../../utils/auth";
+import { getDriverId, updateDriverProfilePic } from "../../utils/auth";
 
 const ProfileInfo = ({ navigation, route }) => {
   const [profile, setProfile] = useState({
@@ -234,6 +234,8 @@ const ProfileInfo = ({ navigation, route }) => {
 
       setProfilePic({ uri: response.data.profilePic });
       setUploadStatus({ type: "success", message: "Profile picture updated!" });
+
+      await updateDriverProfilePic(response.data.profilePic);
 
       // Clear the status after 3 seconds
       setTimeout(() => setUploadStatus(null), 3000);

@@ -35,3 +35,30 @@ export const clearDriverData = async () => {
     console.error('Error clearing driver data:', error);
   }
 };
+
+export const updateDriverProfilePic = async (profilePic) => {
+  try {
+    const driverData = await getDriverData();
+    
+    // Check if driverData exists and is valid
+    if (!driverData) {
+      throw new Error('No driver data found');
+    }
+
+    // Ensure profilePic is a valid string
+    if (typeof profilePic !== 'string' || profilePic.trim() === '') {
+      throw new Error('Invalid profile picture URL');
+    }
+
+    // Create a new object with updated profile picture
+    const updatedDriverData = {
+      ...driverData,
+      profilePic: profilePic
+    };
+
+    await storeDriverData(updatedDriverData);
+  } catch (error) {
+    console.error('Error updating driver profile picture:', error);
+    // Consider adding error handling/recovery here
+  }
+};
