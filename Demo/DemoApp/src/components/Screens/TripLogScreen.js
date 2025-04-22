@@ -60,20 +60,21 @@ const TripLogScreen = ({ navigation, route }) => {
   const [isSignatureSaved, setIsSignatureSaved] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
 
   const signatureRef = useRef();
   const scrollViewRef = useRef();
 
   const validateTripData = () => {
-    if (!startKmImage || !manualStartKm) {
+    if (!startKmImage.uri || !manualStartKm) {
       Alert.alert("Validation Error", "Please provide start KM data");
       return false;
     }
-    if (!endKmImage || !manualEndKm) {
+    if (!endKmImage.uri || !manualEndKm) {
       Alert.alert("Validation Error", "Please provide end KM data");
       return false;
     }
-    if (!signature) {
+    if (!signature.uri) {
       Alert.alert("Validation Error", "Please provide customer signature");
       return false;
     }
@@ -139,9 +140,9 @@ const TripLogScreen = ({ navigation, route }) => {
         );
 
         if (currentImageType === "start") {
-          setStartKmImage(compressedImage.uri);
+          setStartKmImage({ uri: compressedImage.uri });
         } else {
-          setEndKmImage(compressedImage.uri);
+          setEndKmImage({ uri: compressedImage.uri });
         }
       } catch (error) {
         console.error("Error compressing image:", error);
@@ -175,9 +176,9 @@ const TripLogScreen = ({ navigation, route }) => {
         );
 
         if (currentImageType === "start") {
-          setStartKmImage(compressedImage.uri);
+          setStartKmImage({ uri: compressedImage.uri });
         } else {
-          setEndKmImage(compressedImage.uri);
+          setEndKmImage({ uri: compressedImage.uri });
         }
       } catch (error) {
         console.error("Error compressing image:", error);
@@ -196,22 +197,39 @@ const TripLogScreen = ({ navigation, route }) => {
       if (!signatureResult) {
         throw new Error("No signature data received.");
       }
-
-      const base64Signature = signatureResult.replace(
-        "data:image/png;base64,",
-        ""
+  
+      // Create a temporary file name
+      const timestamp = new Date().getTime();
+      const filename = `${FileSystem.cacheDirectory}signature_${timestamp}.jpg`;
+      
+      // Convert base64 to JPG and save to file
+      const base64Data = signatureResult.split(',')[1];
+      await FileSystem.writeAsStringAsync(filename, base64Data, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+  
+      // Optionally compress the image
+      const compressedImage = await ImageManipulator.manipulateAsync(
+        filename,
+        [],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
-      setSignature(base64Signature);
+  
+      // Set the URI in state
+      setSignature({uri: compressedImage.uri});
       setIsSignatureSaved(true);
+      
       Alert.alert("Success", "Signature saved successfully");
     } catch (error) {
       console.error("Error saving signature:", error);
-      Alert.alert("Error", "Failed to save signature");
+      Alert.alert("Error", `Failed to save signature: ${error.message}`);
     }
   };
-
+  
   const handleClearSignature = () => {
-    signatureRef.current?.clearSignature();
+    if (signatureRef.current) {
+      signatureRef.current.clearSignature();
+    }
     setSignature(null);
     setIsSignatureSaved(false);
   };
@@ -229,7 +247,7 @@ const TripLogScreen = ({ navigation, route }) => {
   const handleCompleteStep = () => {
     switch (activeTab) {
       case "startKm":
-        if (startKmImage && manualStartKm) {
+        if (startKmImage.uri && manualStartKm) {
           setActiveTab("customerSign");
           scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         } else {
@@ -248,7 +266,7 @@ const TripLogScreen = ({ navigation, route }) => {
         }
         break;
       case "endKm":
-        if (endKmImage && manualEndKm) {
+        if (endKmImage.uri && manualEndKm) {
           // All steps completed
         } else {
           Alert.alert(
@@ -263,6 +281,15 @@ const TripLogScreen = ({ navigation, route }) => {
   // Improved Firebase upload function with better error handling
   const uploadImageToFirebase = async (uri, path) => {
     try {
+      setUploadStatus({ type: "loading", message: "Uploading..." }); // TODO
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: uri,
+        name: path,
+        type: "image/jpeg",
+      });
+
       // Check if URI is base64 (signature) or file URI
       let blob;
       if (uri.startsWith('data:')) {
@@ -270,29 +297,26 @@ const TripLogScreen = ({ navigation, route }) => {
         const response = await fetch(uri);
         blob = await response.blob();
       } else {
-        // Handle file URI
-        const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (!fileInfo.exists) {
-          throw new Error('File does not exist');
-        }
-        const fileContent = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        const blob = new Blob([fileContent], { type: 'image/jpeg' });
+        const response = await api.post(
+          `/duty-slips/${dutySlipId}/image`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        setUploadStatus({ type: "success", message: "Image uploaded!" });
+
+        // Clear the status after 3 seconds
+        setTimeout(() => setUploadStatus(null), 3000);
+  
+        return response.data.image;
       }
-
-      const storageRef = ref(storage, path);
-      const uploadTask = uploadBytes(storageRef, blob);
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Upload timeout')), 30000)
-      );
-
-      await Promise.race([uploadTask, timeoutPromise]);
-      const downloadURL = await getDownloadURL(storageRef);
-      return downloadURL;
     } catch (error) {
+      console.error("Upload failed:", error);
+      setUploadStatus({ type: "error", message: "Upload failed" });
       throw new Error(`Upload failed: ${error.message}`);
     }
   };
@@ -322,8 +346,8 @@ const TripLogScreen = ({ navigation, route }) => {
 
       try {
         startKmImageUrl = await uploadImageToFirebase(
-          startKmImage,
-          `duty-slips/${dutySlipId}/start-km.jpg`
+          startKmImage.uri,
+          `duty-slips/${dutySlipId}/start-km`
         );
       } catch (error) {
         throw new Error(`Failed to upload start KM image: ${error.message}`);
@@ -331,8 +355,8 @@ const TripLogScreen = ({ navigation, route }) => {
 
       try {
         endKmImageUrl = await uploadImageToFirebase(
-          endKmImage,
-          `duty-slips/${dutySlipId}/end-km.jpg`
+          endKmImage.uri,
+          `duty-slips/${dutySlipId}/end-km`
         );
       } catch (error) {
         throw new Error(`Failed to upload end KM image: ${error.message}`);
@@ -341,8 +365,8 @@ const TripLogScreen = ({ navigation, route }) => {
       if (signature) {
         try {
           signatureUrl = await uploadImageToFirebase(
-            `data:image/png;base64,${signature}`,
-            `duty-slips/${dutySlipId}/signature.png`
+            signature.uri,
+            `duty-slips/${dutySlipId}/signature`
           );
         } catch (error) {
           console.warn("Signature upload failed, continuing without it");
@@ -472,7 +496,7 @@ const TripLogScreen = ({ navigation, route }) => {
                 {startKmImage && (
                   <View style={styles.imagePreviewContainer}>
                     <Image
-                      source={{ uri: startKmImage }}
+                      source={startKmImage}
                       style={styles.imagePreview}
                       resizeMode="contain"
                     />
@@ -566,7 +590,7 @@ const TripLogScreen = ({ navigation, route }) => {
                 {endKmImage && (
                   <View style={styles.imagePreviewContainer}>
                     <Image
-                      source={{ uri: endKmImage }}
+                      source={endKmImage}
                       style={styles.imagePreview}
                       resizeMode="contain"
                     />
@@ -689,7 +713,7 @@ const TripLogScreen = ({ navigation, route }) => {
               <Text style={styles.previewSectionTitle}>Start KM</Text>
               {startKmImage && (
                 <Image
-                  source={{ uri: startKmImage }}
+                  source={startKmImage}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
@@ -703,7 +727,7 @@ const TripLogScreen = ({ navigation, route }) => {
               <Text style={styles.previewSectionTitle}>Customer Signature</Text>
               {signature ? (
                 <Image
-                  source={{ uri: `data:image/png;base64,${signature}` }}
+                  source={signature}
                   style={styles.signaturePreview}
                   resizeMode="contain"
                 />
@@ -716,7 +740,7 @@ const TripLogScreen = ({ navigation, route }) => {
               <Text style={styles.previewSectionTitle}>End KM</Text>
               {endKmImage && (
                 <Image
-                  source={{ uri: endKmImage }}
+                  source={endKmImage}
                   style={styles.previewImage}
                   resizeMode="contain"
                 />
