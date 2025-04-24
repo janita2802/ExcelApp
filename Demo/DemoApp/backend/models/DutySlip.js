@@ -31,7 +31,7 @@ const DutySlipSchema = new mongoose.Schema(
     createdAt: { type: Date, default: Date.now },
     status: {
       type: String,
-      enum: ["pending", "in-progress", "completed"],
+      enum: ["pending",  "completed"],
       default: "pending",
     },
     modifiedAt: Date,

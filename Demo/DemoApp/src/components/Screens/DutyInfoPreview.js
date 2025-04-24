@@ -24,20 +24,16 @@ const DutyInfoPreview = ({
   address,
   contact,
   driverName,
-  carNumber,
   tripRoute,
 }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Duty Slip #{id}</Text>
-
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Trip Details</Text>
+      <View style={styles.infoRow}>
+      <Text style={styles.label}>Duty Slip Id:</Text>
+      <Text style={styles.value}>#{id}</Text>
+      </View>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Vehicle:</Text>
-          <Text style={styles.value}>
-            {category} ({carNumber})
-          </Text>
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.label}>Driver:</Text>
@@ -54,18 +50,9 @@ const DutyInfoPreview = ({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Customer Details</Text>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>Name:</Text>
+          <Text style={styles.label}>Customer Name:</Text>
           <Text style={styles.value}>{party}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Contact:</Text>
-          <Text style={styles.value}>{contact}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Address:</Text>
-          <Text style={styles.value}>{address}</Text>
         </View>
       </View>
     </View>
