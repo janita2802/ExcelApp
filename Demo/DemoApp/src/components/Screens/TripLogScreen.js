@@ -61,6 +61,8 @@ const TripLogScreen = ({ navigation, route }) => {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
   const signatureRef = useRef();
   const scrollViewRef = useRef();
@@ -122,14 +124,14 @@ const TripLogScreen = ({ navigation, route }) => {
       Alert.alert("Permission required", "Camera access is needed");
       return;
     }
-
+  
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-
+  
     if (!result.canceled && result.assets) {
       try {
         // Compress the image
@@ -138,11 +140,19 @@ const TripLogScreen = ({ navigation, route }) => {
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
-
+  
+        // Get current time in 24-hour format
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const currentTime = `${hours}:${minutes}`;
+  
         if (currentImageType === "start") {
           setStartKmImage({ uri: compressedImage.uri });
+          setStartTime(currentTime); // Set start time
         } else {
           setEndKmImage({ uri: compressedImage.uri });
+          setEndTime(currentTime); // Set end time
         }
       } catch (error) {
         console.error("Error compressing image:", error);
@@ -151,21 +161,22 @@ const TripLogScreen = ({ navigation, route }) => {
     }
     setShowImagePicker(false);
   };
-
+  
+  // Similarly update handleSelectFromGallery
   const handleSelectFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
       Alert.alert("Permission required", "Gallery access is needed");
       return;
     }
-
+  
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-
+  
     if (!result.canceled && result.assets) {
       try {
         // Compress the image
@@ -174,11 +185,19 @@ const TripLogScreen = ({ navigation, route }) => {
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
-
+  
+        // Get current time in 24-hour format
+        const now = new Date();
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const currentTime = `${hours}:${minutes}`;
+  
         if (currentImageType === "start") {
           setStartKmImage({ uri: compressedImage.uri });
+          setStartTime(currentTime);
         } else {
           setEndKmImage({ uri: compressedImage.uri });
+          setEndTime(currentTime);
         }
       } catch (error) {
         console.error("Error compressing image:", error);
@@ -187,6 +206,8 @@ const TripLogScreen = ({ navigation, route }) => {
     }
     setShowImagePicker(false);
   };
+
+
 
   const handleSaveSignature = () => {
     signatureRef.current?.readSignature();
@@ -379,8 +400,8 @@ const TripLogScreen = ({ navigation, route }) => {
         startKmImageUrl,
         endKmImageUrl,
         customerSignatureUrl: signatureUrl || null,
-        timestampStart: getCurrentTime(),
-        timestampEnd: getCurrentTime(),
+        startTime, // Add start time
+        endTime,   // Add end time
         tollFees: "0",
         parkingFees: "0",
       };
@@ -475,7 +496,9 @@ const TripLogScreen = ({ navigation, route }) => {
             {activeTab === "startKm" && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Starting Kilometer</Text>
-
+                {startTime && (
+                  <Text style={styles.timeText}>Start Time: {startTime}</Text>
+                )}
                 <View style={styles.imageOptionsContainer}>
                   <TouchableOpacity
                     style={[
@@ -569,7 +592,9 @@ const TripLogScreen = ({ navigation, route }) => {
             {activeTab === "endKm" && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Ending Kilometer</Text>
-
+                {endTime && (
+                  <Text style={styles.timeText}>End Time: {endTime}</Text>
+                )}
                 <View style={styles.imageOptionsContainer}>
                   <TouchableOpacity
                     style={[
@@ -709,8 +734,11 @@ const TripLogScreen = ({ navigation, route }) => {
               carNumber={dutySlipData.carNumber}
               tripRoute={dutySlipData.tripRoute}
             />
-            <View style={styles.previewSection}>
+           <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Start KM</Text>
+              {startTime && (
+                <Text style={styles.previewText}>Start Time: {startTime}</Text>
+              )}
               {startKmImage && (
                 <Image
                   source={startKmImage}
@@ -720,6 +748,23 @@ const TripLogScreen = ({ navigation, route }) => {
               )}
               <Text style={styles.previewText}>
                 Manual Entry: {manualStartKm} km
+              </Text>
+            </View>
+
+            <View style={styles.previewSection}>
+              <Text style={styles.previewSectionTitle}>End KM</Text>
+              {endTime && (
+                <Text style={styles.previewText}>End Time: {endTime}</Text>
+              )}
+              {endKmImage && (
+                <Image
+                  source={endKmImage}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
+              <Text style={styles.previewText}>
+                Manual Entry: {manualEndKm} km
               </Text>
             </View>
 
@@ -1085,6 +1130,13 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: "#4CAF50",
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#800000',
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });
 
