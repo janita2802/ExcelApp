@@ -57,7 +57,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/send-otp", async (req, res) => {
-  const { contact } = req.body;
+ let { contact } = req.body;
 
   try {
     let driver;
@@ -73,6 +73,10 @@ router.post("/send-otp", async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
+    if (!contact.startsWith("+91")){
+      contact = "+91" + contact;
+    }
+  
     // Rest of your existing OTP logic...
     await OTP.deleteMany({ email: contact });
 

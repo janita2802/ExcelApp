@@ -56,6 +56,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+
 // POST trip completion (with Firebase Storage URLs)
 router.post("/:id/complete", async (req, res) => {
   try {
@@ -68,8 +69,8 @@ router.post("/:id/complete", async (req, res) => {
       customerSignatureUrl,
       tollFees = 0,
       parkingFees = 0,
-      timestampStart,
-      timestampEnd,
+      startTime,  // Add startTime parameter
+      endTime,    // Add endTime parameter
     } = req.body;
 
     // Validate required fields
@@ -77,6 +78,15 @@ router.post("/:id/complete", async (req, res) => {
       return res
         .status(400)
         .json({ message: "Missing required fields or image URLs" });
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (startTime && !timeRegex.test(startTime)) {
+      return res.status(400).json({ message: "Invalid start time format. Use HH:MM (24-hour format)" });
+    }
+    if (endTime && !timeRegex.test(endTime)) {
+      return res.status(400).json({ message: "Invalid end time format. Use HH:MM (24-hour format)" });
     }
 
     // Check if duty slip exists and isn't already completed
@@ -100,10 +110,10 @@ router.post("/:id/complete", async (req, res) => {
           customerSignature: customerSignatureUrl || null,
           tollFees: parseFloat(tollFees),
           parkingFees: parseFloat(parkingFees),
-          startTime: timestampStart,
-          endTime: timestampEnd,
+          startTime: startTime || null,  // Store start time
+          endTime: endTime || null,      // Store end time
           modifiedAt: new Date(),
-          status: "completed", // Explicitly set status to completed
+          status: "completed",
         },
       },
       { new: true }
@@ -116,6 +126,8 @@ router.post("/:id/complete", async (req, res) => {
         status: updatedSlip.status,
         startKM: updatedSlip.startKM,
         endKM: updatedSlip.endKM,
+        startTime: updatedSlip.startTime,  // Include in response
+        endTime: updatedSlip.endTime,      // Include in response
         completedAt: updatedSlip.modifiedAt
       },
     });
@@ -125,7 +137,7 @@ router.post("/:id/complete", async (req, res) => {
   }
 });
 
-// PUT endpoint to update duty slip (alternative to POST /complete)
+// PUT endpoint to update duty slip
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -142,10 +154,22 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ message: 'Completed duty slips cannot be modified' });
     }
 
+    // Validate time formats if provided
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (updateData.startTime && !timeRegex.test(updateData.startTime)) {
+      return res.status(400).json({ message: "Invalid start time format. Use HH:MM (24-hour format)" });
+    }
+    if (updateData.endTime && !timeRegex.test(updateData.endTime)) {
+      return res.status(400).json({ message: "Invalid end time format. Use HH:MM (24-hour format)" });
+    }
+
     // If marking as complete, ensure required fields are present
     if (updateData.status === 'completed') {
       if (!updateData.startKM || !updateData.endKM || !updateData.startKMPhoto || !updateData.endKMPhoto) {
         return res.status(400).json({ message: "Missing required fields for completion" });
+      }
+      if (!updateData.startTime || !updateData.endTime) {
+        return res.status(400).json({ message: "Start and end times are required for completion" });
       }
     }
 
@@ -160,7 +184,13 @@ router.put("/:id", async (req, res) => {
 
     res.json({
       message: "Duty slip updated successfully",
-      dutySlip: updatedSlip
+      dutySlip: {
+        id: updatedSlip.dutySlipId,
+        status: updatedSlip.status,
+        startTime: updatedSlip.startTime,
+        endTime: updatedSlip.endTime,
+        // Include other relevant fields
+      }
     });
   } catch (error) {
     console.error("Error updating duty slip:", error);
@@ -240,12 +270,49 @@ router.post(
 // GET completed duty slips
 router.get("/history/completed", async (req, res) => {
   try {
-    const completedTrips = await DutySlip.find({ status: "completed" })
+    const { startDate, endDate, driverId } = req.query;
+    
+    // Build query
+    const query = { status: "completed" };
+    
+    if (startDate && endDate) {
+      query.dateFrom = { 
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+    
+    if (driverId) {
+      query.driverId = driverId;
+    }
+
+    const completedTrips = await DutySlip.find(query)
       .sort({ dateFrom: -1 }) // Sort by date descending (newest first)
-      .select("dutySlipId dateFrom dateTo startTime endTime tripRoute dutyType startKM endKM")
+      .select("dutySlipId dateFrom dateTo startTime endTime tripRoute dutyType startKM endKM driverName carNumber")
       .lean();
 
-    res.json(completedTrips);
+    // Calculate duration for each trip
+    const tripsWithDuration = completedTrips.map(trip => {
+      let duration = "N/A";
+      if (trip.startTime && trip.endTime) {
+        const [startH, startM] = trip.startTime.split(':').map(Number);
+        const [endH, endM] = trip.endTime.split(':').map(Number);
+        
+        let totalMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+        if (totalMinutes < 0) totalMinutes += 24 * 60; // Handle overnight
+        
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        duration = `${hours}h ${minutes}m`;
+      }
+      
+      return {
+        ...trip,
+        duration
+      };
+    });
+
+    res.json(tripsWithDuration);
   } catch (error) {
     console.error("Error fetching completed trips:", error);
     res.status(500).json({ message: "Server error" });
