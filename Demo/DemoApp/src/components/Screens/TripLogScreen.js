@@ -342,6 +342,27 @@ const TripLogScreen = ({ navigation, route }) => {
     }
   };
 
+  const calculateDuration = (start, end) => {
+    try {
+      const [startHours, startMinutes] = start.split(':').map(Number);
+      const [endHours, endMinutes] = end.split(':').map(Number);
+      
+      let totalMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+      
+      if (totalMinutes < 0) {
+        totalMinutes += 24 * 60; // Handle overnight trips
+      }
+      
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      
+      return `Duration: ${hours}h ${minutes}m`;
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      return 'Duration: N/A';
+    }
+  };
+
   // Enhanced submit function with better error handling
   const submitTripData = async () => {
     setIsSubmitting(true);
@@ -719,103 +740,103 @@ const TripLogScreen = ({ navigation, route }) => {
       </Modal>
 
       <Modal visible={showPreview} animationType="slide" transparent={false}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Trip Preview</Text>
+  <View style={styles.modalContainer}>
+    <Text style={styles.modalTitle}>Trip Preview</Text>
 
-          <ScrollView style={styles.previewContent}>
-            <DutyInfoPreview
-              id={dutySlipData.id}
-              category={dutySlipData.category}
-              pickupTime={dutySlipData.pickupTime}
-              party={dutySlipData.party}
-              address={dutySlipData.address}
-              contact={dutySlipData.contact}
-              driverName={dutySlipData.driverName}
-              carNumber={dutySlipData.carNumber}
-              tripRoute={dutySlipData.tripRoute}
-            />
-           <View style={styles.previewSection}>
-              <Text style={styles.previewSectionTitle}>Start KM</Text>
-              {startTime && (
-                <Text style={styles.previewText}>Start Time: {startTime}</Text>
-              )}
-              {startKmImage && (
-                <Image
-                  source={startKmImage}
-                  style={styles.previewImage}
-                  resizeMode="contain"
-                />
-              )}
-              <Text style={styles.previewText}>
-                Manual Entry: {manualStartKm} km
-              </Text>
-            </View>
+    <ScrollView style={styles.previewContent}>
+      <DutyInfoPreview
+        id={dutySlipData.id}
+        category={dutySlipData.category}
+        pickupTime={dutySlipData.pickupTime}
+        party={dutySlipData.party}
+        address={dutySlipData.address}
+        contact={dutySlipData.contact}
+        driverName={dutySlipData.driverName}
+        carNumber={dutySlipData.carNumber}
+        tripRoute={dutySlipData.tripRoute}
+      />
+      
+      {/* Start KM Section with Time */}
+      <View style={styles.previewSection}>
+        <Text style={styles.previewSectionTitle}>Start KM</Text>
+        {startTime && (
+          <Text style={styles.previewText}>Start Time: {startTime}</Text>
+        )}
+        {startKmImage && (
+          <Image
+            source={startKmImage}
+            style={styles.previewImage}
+            resizeMode="contain"
+          />
+        )}
+        <Text style={styles.previewText}>
+          Manual Entry: {manualStartKm} km
+        </Text>
+      </View>
 
-            <View style={styles.previewSection}>
-              <Text style={styles.previewSectionTitle}>End KM</Text>
-              {endTime && (
-                <Text style={styles.previewText}>End Time: {endTime}</Text>
-              )}
-              {endKmImage && (
-                <Image
-                  source={endKmImage}
-                  style={styles.previewImage}
-                  resizeMode="contain"
-                />
-              )}
-              <Text style={styles.previewText}>
-                Manual Entry: {manualEndKm} km
-              </Text>
-            </View>
+      {/* End KM Section with Time */}
+      <View style={styles.previewSection}>
+        <Text style={styles.previewSectionTitle}>End KM</Text>
+        {endTime && (
+          <Text style={styles.previewText}>End Time: {endTime}</Text>
+        )}
+        {endKmImage && (
+          <Image
+            source={endKmImage}
+            style={styles.previewImage}
+            resizeMode="contain"
+          />
+        )}
+        <Text style={styles.previewText}>
+          Manual Entry: {manualEndKm} km
+        </Text>
+      </View>
 
-            <View style={styles.previewSection}>
-              <Text style={styles.previewSectionTitle}>Customer Signature</Text>
-              {signature ? (
-                <Image
-                  source={signature}
-                  style={styles.signaturePreview}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Text style={styles.previewText}>No signature saved</Text>
-              )}
-            </View>
+      {/* Signature Section */}
+      <View style={styles.previewSection}>
+        <Text style={styles.previewSectionTitle}>Customer Signature</Text>
+        {signature ? (
+          <Image
+            source={signature}
+            style={styles.signaturePreview}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.previewText}>No signature saved</Text>
+        )}
+      </View>
 
-            <View style={styles.previewSection}>
-              <Text style={styles.previewSectionTitle}>End KM</Text>
-              {endKmImage && (
-                <Image
-                  source={endKmImage}
-                  style={styles.previewImage}
-                  resizeMode="contain"
-                />
-              )}
-              <Text style={styles.previewText}>
-                Manual Entry: {manualEndKm} km
-              </Text>
-            </View>
-          </ScrollView>
-
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={[styles.modalButton, styles.closeButton]}
-              onPress={() => setShowPreview(false)}
-            >
-              <Text style={styles.buttonText}>CLOSE</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modalButton, styles.submitButton]}
-              onPress={() => {
-                setShowPreview(false);
-                submitTripData();
-              }}
-            >
-              <Text style={styles.buttonText}>SUBMIT TRIP</Text>
-            </TouchableOpacity>
-          </View>
+      {/* Trip Duration Calculation (Optional) */}
+      {startTime && endTime && (
+        <View style={styles.previewSection}>
+          <Text style={styles.previewSectionTitle}>Trip Duration</Text>
+          <Text style={styles.previewText}>
+            {calculateDuration(startTime, endTime)}
+          </Text>
         </View>
-      </Modal>
+      )}
+    </ScrollView>
+
+    <View style={styles.modalButtons}>
+      <TouchableOpacity
+        style={[styles.modalButton, styles.closeButton]}
+        onPress={() => setShowPreview(false)}
+      >
+        <Text style={styles.buttonText}>CLOSE</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.modalButton, styles.submitButton]}
+        onPress={() => {
+          setShowPreview(false);
+          submitTripData();
+        }}
+      >
+        <Text style={styles.buttonText}>SUBMIT TRIP</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
       <Footer />
 
@@ -1137,6 +1158,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     textAlign: 'center',
+  },
+
+  durationText: {
+    fontSize: 16,
+    color: '#800000',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 5,
   },
 });
 
