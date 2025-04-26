@@ -77,7 +77,8 @@ const DutyHistory = ({ navigation }) => {
       <View style={styles.tripHeader}>
         <Text style={styles.tripDate}>{formatDate(item.dateFrom)}</Text>
         <Text style={styles.tripTime}>
-          {formatTime(item.startTime)} - {formatTime(item.endTime)}
+          {item.startTime} - {item.endTime}
+          {/* {formatTime(item.startTime)} - {formatTime(item.endTime)} */}
         </Text>
         <View style={[styles.statusBadge, styles.completedBadge]}>
           <Text style={styles.statusText}>Completed</Text>
