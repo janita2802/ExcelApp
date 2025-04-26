@@ -27,6 +27,7 @@ import Menu from "../Common/Menu";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { initializeApp } from "firebase/app";
 import Constants from 'expo-constants';
+import { getDriverData } from '../../utils/auth';
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -432,11 +433,17 @@ const TripLogScreen = ({ navigation, route }) => {
         tripData
       );
       
-      Alert.alert(
-        "Success", 
-        "Trip data submitted successfully!",
-        [{ text: "OK", onPress: () => navigation.navigate("Main") }]
-      );
+      Alert.alert("Success", "Trip data submitted successfully!", [
+        {
+          text: "OK",
+          onPress: async () => {
+            const driverData = await getDriverData();
+            navigation.navigate("Main", {
+              driver: driverData,
+            });
+          },
+        },
+      ]);
       
     } catch (error) {
       console.error("❌ Submission error:", error);
