@@ -270,17 +270,18 @@ router.post(
 // GET completed duty slips
 router.get("/history/completed", async (req, res) => {
   try {
-    const { startDate, endDate, driverId } = req.query;
+    const { driverId } = req.query;
+    // const { startDate, endDate, driverId } = req.query;
     
     // Build query
     const query = { status: "completed" };
     
-    if (startDate && endDate) {
-      query.dateFrom = { 
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
-      };
-    }
+    // if (startDate && endDate) {
+    //   query.dateFrom = { 
+    //     $gte: new Date(startDate),
+    //     $lte: new Date(endDate)
+    //   };
+    // }
     
     if (driverId) {
       query.driverId = driverId;

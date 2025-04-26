@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "../../utils/api";
+import { getDriverId } from "../../utils/auth";
 
 const DutyHistory = ({ navigation }) => {
   const [trips, setTrips] = useState([]);
@@ -23,7 +24,12 @@ const DutyHistory = ({ navigation }) => {
   const fetchCompletedTrips = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/duty-slips/history/completed");
+
+      const driverId = await getDriverId();
+      const params = {
+        driverId: driverId
+      };
+      const response = await api.get("/duty-slips/history/completed", { params });
       
       // Process the data to count local vs outstation trips
       const localCount = response.data.filter(
