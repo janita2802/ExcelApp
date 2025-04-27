@@ -270,9 +270,7 @@ const TripLogScreen = ({ navigation, route }) => {
         if (!startKmImage || !startKmImage.uri || !manualStartKm) {
           Alert.alert(
             "Required Fields Missing",
-            "Please add both odometer image and enter KM manually before proceeding",
-            [{ text: "OK", onPress: () => console.log("OK Pressed") }],
-            { cancelable: false }
+            "Please add both odometer image and enter KM manually before proceeding"
           );
           return;
         }
