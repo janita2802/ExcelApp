@@ -57,7 +57,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/send-otp", async (req, res) => {
- let { contact } = req.body;
+  let { contact } = req.body;
 
   try {
     let driver;
@@ -73,10 +73,13 @@ router.post("/send-otp", async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    if (!contact.startsWith("+91")){
+    contact = contact.trim();
+    if (!contact.startsWith("+91") && contact.length === 10) {
       contact = "+91" + contact;
+    } else if (contact.startsWith("0")) {
+      contact = "+91" + contact.substring(1);
     }
-  
+
     // Rest of your existing OTP logic...
     await OTP.deleteMany({ email: contact });
 
@@ -121,7 +124,16 @@ router.post("/verify-otp", async (req, res) => {
   const { contact, otp } = req.body;
 
   try {
-    const normalizedContact = contact.trim(); // Normalize input if needed
+    let normalizedContact = contact.trim();
+    if (
+      !normalizedContact.startsWith("+91") &&
+      normalizedContact.length === 10
+    ) {
+      normalizedContact = "+91" + normalizedContact;
+    } else if (normalizedContact.startsWith("0")) {
+      normalizedContact = "+91" + normalizedContact.substring(1);
+    }
+    console.log(normalizedContact);
 
     // Find the OTP record
     const otpRecord = await OTP.findOne({ email: normalizedContact, otp });
@@ -131,12 +143,12 @@ router.post("/verify-otp", async (req, res) => {
     }
 
     // Optional: Check if contact belongs to a valid Driver
-    const driver = await Driver.findOne({ contact: normalizedContact });
-      if (!driver) {
-        return res.status(403).json({
-          message: `OTP is not valid for this user`,
-        });
-      }
+    // const driver = await Driver.findOne({ contact: normalizedContact });
+    // if (!driver) {
+    //   return res.status(403).json({
+    //     message: `OTP is not valid for this user`,
+    //   });
+    // }
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
@@ -160,12 +172,14 @@ router.post("/change-password", async (req, res) => {
       return res.status(400).json({ message: "Phone number is required" });
     }
 
-    if (!currentPassword) {
-      return res.status(400).json({ message: "Current Password is required" });
-    }
+    // if (!currentPassword) {
+    //   return res.status(400).json({ message: "Current Password is required" });
+    // }
 
     if (newPassword === currentPassword) {
-      return res.status(400).json({ message: "New Password must be different" });
+      return res
+        .status(400)
+        .json({ message: "New Password must be different" });
     }
 
     if (newPassword.length < 5) {
