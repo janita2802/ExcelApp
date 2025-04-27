@@ -64,20 +64,25 @@ const TripLogScreen = ({ navigation, route }) => {
   const [uploadStatus, setUploadStatus] = useState(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [showFeesModal, setShowFeesModal] = useState(false);
+  const [tollFees, setTollFees] = useState("0");
+  const [parkingFees, setParkingFees] = useState("0");
+  const [skipFees, setSkipFees] = useState(false);
+  const [tripDataReady, setTripDataReady] = useState(false);
 
   const signatureRef = useRef();
   const scrollViewRef = useRef();
 
   const validateTripData = () => {
-    if (!startKmImage.uri || !manualStartKm) {
+    if (!startKmImage?.uri || !manualStartKm) {
       Alert.alert("Validation Error", "Please provide start KM data");
       return false;
     }
-    if (!endKmImage.uri || !manualEndKm) {
+    if (!endKmImage?.uri || !manualEndKm) {
       Alert.alert("Validation Error", "Please provide end KM data");
       return false;
     }
-    if (!signature.uri) {
+    if (!signature?.uri) {
       Alert.alert("Validation Error", "Please provide customer signature");
       return false;
     }
@@ -135,14 +140,12 @@ const TripLogScreen = ({ navigation, route }) => {
 
     if (!result.canceled && result.assets) {
       try {
-        // Compress the image
         const compressedImage = await ImageManipulator.manipulateAsync(
           result.assets[0].uri,
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        // Get current time in 24-hour format
         const now = new Date();
         const hours = now.getHours().toString().padStart(2, "0");
         const minutes = now.getMinutes().toString().padStart(2, "0");
@@ -150,10 +153,10 @@ const TripLogScreen = ({ navigation, route }) => {
 
         if (currentImageType === "start") {
           setStartKmImage({ uri: compressedImage.uri });
-          setStartTime(currentTime); // Set start time
+          setStartTime(currentTime);
         } else {
           setEndKmImage({ uri: compressedImage.uri });
-          setEndTime(currentTime); // Set end time
+          setEndTime(currentTime);
         }
       } catch (error) {
         console.error("Error compressing image:", error);
@@ -163,7 +166,6 @@ const TripLogScreen = ({ navigation, route }) => {
     setShowImagePicker(false);
   };
 
-  // Similarly update handleSelectFromGallery
   const handleSelectFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== "granted") {
@@ -180,14 +182,12 @@ const TripLogScreen = ({ navigation, route }) => {
 
     if (!result.canceled && result.assets) {
       try {
-        // Compress the image
         const compressedImage = await ImageManipulator.manipulateAsync(
           result.assets[0].uri,
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        // Get current time in 24-hour format
         const now = new Date();
         const hours = now.getHours().toString().padStart(2, "0");
         const minutes = now.getMinutes().toString().padStart(2, "0");
@@ -218,27 +218,22 @@ const TripLogScreen = ({ navigation, route }) => {
         throw new Error("No signature data received.");
       }
 
-      // Create a temporary file name
       const timestamp = new Date().getTime();
       const filename = `${FileSystem.cacheDirectory}signature_${timestamp}.jpg`;
 
-      // Convert base64 to JPG and save to file
       const base64Data = signatureResult.split(",")[1];
       await FileSystem.writeAsStringAsync(filename, base64Data, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Optionally compress the image
       const compressedImage = await ImageManipulator.manipulateAsync(
         filename,
         [],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Set the URI in state
       setSignature({ uri: compressedImage.uri });
       setIsSignatureSaved(true);
-
       Alert.alert("Success", "Signature saved successfully");
     } catch (error) {
       console.error("Error saving signature:", error);
@@ -269,10 +264,12 @@ const TripLogScreen = ({ navigation, route }) => {
       case "startKm":
         if (!startKmImage || !startKmImage.uri || !manualStartKm) {
           Alert.alert(
-            "Required Fields Missing",
-            "Please add both odometer image and enter KM manually before proceeding"
+            "Required",
+            "Both odometer image and manual entry are required for start KM"
           );
-          return;
+        } else {
+          setActiveTab("customerSign");
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         }
         break;
       case "customerSign":
@@ -284,9 +281,7 @@ const TripLogScreen = ({ navigation, route }) => {
         }
         break;
       case "endKm":
-        if (endKmImage.uri && manualEndKm) {
-          // All steps completed
-        } else {
+        if (!endKmImage || !endKmImage.uri || !manualEndKm) {
           Alert.alert(
             "Required",
             "Both odometer image and manual entry are required for end KM"
@@ -296,10 +291,9 @@ const TripLogScreen = ({ navigation, route }) => {
     }
   };
 
-  // Improved Firebase upload function with better error handling
   const uploadImageToFirebase = async (uri, path) => {
     try {
-      setUploadStatus({ type: "loading", message: "Uploading..." }); // TODO
+      setUploadStatus({ type: "loading", message: "Uploading..." });
 
       const formData = new FormData();
       formData.append("image", {
@@ -308,10 +302,8 @@ const TripLogScreen = ({ navigation, route }) => {
         type: "image/jpeg",
       });
 
-      // Check if URI is base64 (signature) or file URI
       let blob;
       if (uri.startsWith("data:")) {
-        // Handle base64 signature
         const response = await fetch(uri);
         blob = await response.blob();
       } else {
@@ -326,10 +318,7 @@ const TripLogScreen = ({ navigation, route }) => {
         );
 
         setUploadStatus({ type: "success", message: "Image uploaded!" });
-
-        // Clear the status after 3 seconds
         setTimeout(() => setUploadStatus(null), 3000);
-
         return response.data.image;
       }
     } catch (error) {
@@ -348,7 +337,7 @@ const TripLogScreen = ({ navigation, route }) => {
         endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
 
       if (totalMinutes < 0) {
-        totalMinutes += 24 * 60; // Handle overnight trips
+        totalMinutes += 24 * 60;
       }
 
       const hours = Math.floor(totalMinutes / 60);
@@ -361,32 +350,26 @@ const TripLogScreen = ({ navigation, route }) => {
     }
   };
 
-  // Enhanced submit function with better error handling
-  const submitTripData = async () => {
-    setIsSubmitting(true);
-
+  const prepareTripData = () => {
     if (!validateTripData()) {
       setIsSubmitting(false);
       return;
     }
+    setTripDataReady(true);
+    setShowFeesModal(true);
+  };
+
+  const handleFinalSubmission = async () => {
+    setIsSubmitting(true);
 
     try {
-      const getCurrentTime = () => {
-        const now = new Date();
-        return now.toISOString();
-      };
-
-      // Show loading state
       Alert.alert(
         "Uploading",
-        "Please wait while we upload your images...",
+        "Please wait while we upload your trip data...",
         [],
-        {
-          cancelable: false,
-        }
+        { cancelable: false }
       );
 
-      // Upload images sequentially with error handling
       let startKmImageUrl, endKmImageUrl, signatureUrl;
 
       try {
@@ -424,10 +407,10 @@ const TripLogScreen = ({ navigation, route }) => {
         startKmImageUrl,
         endKmImageUrl,
         customerSignatureUrl: signatureUrl || null,
-        startTime, // Add start time
-        endTime, // Add end time
-        tollFees: "0",
-        parkingFees: "0",
+        startTime,
+        endTime,
+        tollFees: skipFees ? "0" : tollFees,
+        parkingFees: skipFees ? "0" : parkingFees,
       };
 
       const response = await api.post(
@@ -450,7 +433,6 @@ const TripLogScreen = ({ navigation, route }) => {
       console.error("❌ Submission error:", error);
       let errorMessage = error.message || "Failed to submit trip data";
 
-      // Handle specific Firebase errors
       if (error.message.includes("storage/")) {
         errorMessage =
           "Image upload failed. Please check your internet connection and try again.";
@@ -689,7 +671,7 @@ const TripLogScreen = ({ navigation, route }) => {
 
                 <TouchableOpacity
                   style={[styles.actionButton, styles.completeButton]}
-                  onPress={submitTripData}
+                  onPress={prepareTripData}
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
@@ -763,7 +745,6 @@ const TripLogScreen = ({ navigation, route }) => {
               tripRoute={dutySlipData.tripRoute}
             />
 
-            {/* Start KM Section with Time */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Start KM</Text>
               {startTime && (
@@ -781,7 +762,6 @@ const TripLogScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* End KM Section with Time */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>End KM</Text>
               {endTime && (
@@ -799,7 +779,6 @@ const TripLogScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            {/* Signature Section */}
             <View style={styles.previewSection}>
               <Text style={styles.previewSectionTitle}>Customer Signature</Text>
               {signature ? (
@@ -813,7 +792,6 @@ const TripLogScreen = ({ navigation, route }) => {
               )}
             </View>
 
-            {/* Trip Duration Calculation (Optional) */}
             {startTime && endTime && (
               <View style={styles.previewSection}>
                 <Text style={styles.previewSectionTitle}>Trip Duration</Text>
@@ -836,11 +814,70 @@ const TripLogScreen = ({ navigation, route }) => {
               style={[styles.modalButton, styles.submitButton]}
               onPress={() => {
                 setShowPreview(false);
-                submitTripData();
+                prepareTripData();
               }}
             >
               <Text style={styles.buttonText}>SUBMIT TRIP</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showFeesModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFeesModal(false)}
+      >
+        <View style={styles.feesModalContainer}>
+          <View style={styles.feesModalContent}>
+            <Text style={styles.feesModalTitle}>Additional Fees</Text>
+
+            {/* Toll Fees Label */}
+            <Text style={styles.feesLabel}>Toll Fees (₹)</Text>
+            <TextInput
+              style={styles.feesInput}
+              placeholder="Enter toll fees"
+              placeholderTextColor="#999"
+              value={tollFees}
+              onChangeText={setTollFees}
+              keyboardType="numeric"
+            />
+
+            {/* Parking Fees Label */}
+            <Text style={styles.feesLabel}>Parking Fees (₹)</Text>
+            <TextInput
+              style={styles.feesInput}
+              placeholder="Enter parking fees"
+              placeholderTextColor="#999"
+              value={parkingFees}
+              onChangeText={setParkingFees}
+              keyboardType="numeric"
+            />
+
+            <View style={styles.feesButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.feesButton, styles.skipButton]}
+                onPress={() => {
+                  setSkipFees(true);
+                  setShowFeesModal(false);
+                  handleFinalSubmission();
+                }}
+              >
+                <Text style={styles.feesButtonText}>SKIP</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.feesButton, styles.submitFeesButton]}
+                onPress={() => {
+                  setSkipFees(false);
+                  setShowFeesModal(false);
+                  handleFinalSubmission();
+                }}
+              >
+                <Text style={styles.feesButtonText}>SUBMIT</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1173,6 +1210,63 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 5,
+  },
+  feesModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  feesModalContent: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    borderRadius: 10,
+    padding: 20,
+  },
+  feesModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#800000",
+  },
+  feesInput: {
+    borderWidth: 1,
+    borderColor: "#800000",
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  feesButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  feesButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  skipButton: {
+    backgroundColor: "#8B0000",
+  },
+  submitFeesButton: {
+    backgroundColor: "#4CAF50",
+  },
+  feesButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  feesLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 4,
+    marginTop: 12,
+    color: "#333", // or whatever matches your theme
   },
 });
 
