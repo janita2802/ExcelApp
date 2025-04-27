@@ -25,16 +25,28 @@ router.post("/login", async (req, res) => {
 
     const safeUsername = escapeRegex(username);
 
+    // const driver = await Driver.findOne({
+    //   name: { $regex: new RegExp(`^${safeUsername}$`, "i") },
+    // });
+
     const driver = await Driver.findOne({
-      name: { $regex: new RegExp(`^${safeUsername}$`, "i") },
+      driverId: { $regex: new RegExp(`^${safeUsername}$`, "i") },
     });
 
     if (!driver) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const isMatch = await driver.comparePassword(password);
-    if (!isMatch) {
+    // const isMatch = await driver.comparePassword(password);
+    // if (!isMatch) {
+    //   return res.status(401).json({ message: "Invalid credentials" });
+    // }
+
+    // Extract last 5 digits of driver's contact
+    const driverContact = driver.contact ? driver.contact.toString() : "";
+    const lastFiveDigits = driverContact.slice(-5);
+
+    if (password !== lastFiveDigits) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 

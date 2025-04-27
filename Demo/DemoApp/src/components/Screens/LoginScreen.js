@@ -476,10 +476,10 @@ const LoginScreen = ({ navigation }) => {
                 placeholderTextColor="#999"
                 value={username}
                 onChangeText={setUsername}
-                autoCapitalize="none"
                 onFocus={() => handleFocus("username")}
                 onBlur={handleBlur}
                 returnKeyType="next"
+                autoCapitalize="characters"
               />
               {username.length > 0 && (
                 <TouchableOpacity
