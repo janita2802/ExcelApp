@@ -19,15 +19,15 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from "expo-file-system";
 import SignatureScreen from "react-native-signature-canvas";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { initializeApp } from "firebase/app";
-import Constants from 'expo-constants';
-import { getDriverData } from '../../utils/auth';
+import Constants from "expo-constants";
+import { getDriverData } from "../../utils/auth";
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -37,7 +37,7 @@ const firebaseConfig = {
   storageBucket: Constants.expoConfig.extra.FIREBASE_STORAGE_BUCKET,
   messagingSenderId: Constants.expoConfig.extra.FIREBASE_YOUR_SENDER_ID,
   appId: Constants.expoConfig.extra.FIREBASE_APP_ID,
-  measurementId: Constants.expoConfig.extra.FIREBASE_MEASUREMENT_ID
+  measurementId: Constants.expoConfig.extra.FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
@@ -125,14 +125,14 @@ const TripLogScreen = ({ navigation, route }) => {
       Alert.alert("Permission required", "Camera access is needed");
       return;
     }
-  
+
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-  
+
     if (!result.canceled && result.assets) {
       try {
         // Compress the image
@@ -141,13 +141,13 @@ const TripLogScreen = ({ navigation, route }) => {
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
-  
+
         // Get current time in 24-hour format
         const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const hours = now.getHours().toString().padStart(2, "0");
+        const minutes = now.getMinutes().toString().padStart(2, "0");
         const currentTime = `${hours}:${minutes}`;
-  
+
         if (currentImageType === "start") {
           setStartKmImage({ uri: compressedImage.uri });
           setStartTime(currentTime); // Set start time
@@ -162,7 +162,7 @@ const TripLogScreen = ({ navigation, route }) => {
     }
     setShowImagePicker(false);
   };
-  
+
   // Similarly update handleSelectFromGallery
   const handleSelectFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -170,14 +170,14 @@ const TripLogScreen = ({ navigation, route }) => {
       Alert.alert("Permission required", "Gallery access is needed");
       return;
     }
-  
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
     });
-  
+
     if (!result.canceled && result.assets) {
       try {
         // Compress the image
@@ -186,13 +186,13 @@ const TripLogScreen = ({ navigation, route }) => {
           [{ resize: { width: 800 } }],
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
-  
+
         // Get current time in 24-hour format
         const now = new Date();
-        const hours = now.getHours().toString().padStart(2, '0');
-        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const hours = now.getHours().toString().padStart(2, "0");
+        const minutes = now.getMinutes().toString().padStart(2, "0");
         const currentTime = `${hours}:${minutes}`;
-  
+
         if (currentImageType === "start") {
           setStartKmImage({ uri: compressedImage.uri });
           setStartTime(currentTime);
@@ -208,8 +208,6 @@ const TripLogScreen = ({ navigation, route }) => {
     setShowImagePicker(false);
   };
 
-
-
   const handleSaveSignature = () => {
     signatureRef.current?.readSignature();
   };
@@ -219,35 +217,35 @@ const TripLogScreen = ({ navigation, route }) => {
       if (!signatureResult) {
         throw new Error("No signature data received.");
       }
-  
+
       // Create a temporary file name
       const timestamp = new Date().getTime();
       const filename = `${FileSystem.cacheDirectory}signature_${timestamp}.jpg`;
-      
+
       // Convert base64 to JPG and save to file
-      const base64Data = signatureResult.split(',')[1];
+      const base64Data = signatureResult.split(",")[1];
       await FileSystem.writeAsStringAsync(filename, base64Data, {
         encoding: FileSystem.EncodingType.Base64,
       });
-  
+
       // Optionally compress the image
       const compressedImage = await ImageManipulator.manipulateAsync(
         filename,
         [],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
-  
+
       // Set the URI in state
-      setSignature({uri: compressedImage.uri});
+      setSignature({ uri: compressedImage.uri });
       setIsSignatureSaved(true);
-      
+
       Alert.alert("Success", "Signature saved successfully");
     } catch (error) {
       console.error("Error saving signature:", error);
       Alert.alert("Error", `Failed to save signature: ${error.message}`);
     }
   };
-  
+
   const handleClearSignature = () => {
     if (signatureRef.current) {
       signatureRef.current.clearSignature();
@@ -269,14 +267,14 @@ const TripLogScreen = ({ navigation, route }) => {
   const handleCompleteStep = () => {
     switch (activeTab) {
       case "startKm":
-        if (startKmImage.uri && manualStartKm) {
-          setActiveTab("customerSign");
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        } else {
+        if (!startKmImage || !startKmImage.uri || !manualStartKm) {
           Alert.alert(
-            "Required",
-            "Both odometer image and manual entry are required for start KM"
+            "Required Fields Missing",
+            "Please add both odometer image and enter KM manually before proceeding",
+            [{ text: "OK", onPress: () => console.log("OK Pressed") }],
+            { cancelable: false }
           );
+          return;
         }
         break;
       case "customerSign":
@@ -314,7 +312,7 @@ const TripLogScreen = ({ navigation, route }) => {
 
       // Check if URI is base64 (signature) or file URI
       let blob;
-      if (uri.startsWith('data:')) {
+      if (uri.startsWith("data:")) {
         // Handle base64 signature
         const response = await fetch(uri);
         blob = await response.blob();
@@ -333,7 +331,7 @@ const TripLogScreen = ({ navigation, route }) => {
 
         // Clear the status after 3 seconds
         setTimeout(() => setUploadStatus(null), 3000);
-  
+
         return response.data.image;
       }
     } catch (error) {
@@ -345,22 +343,23 @@ const TripLogScreen = ({ navigation, route }) => {
 
   const calculateDuration = (start, end) => {
     try {
-      const [startHours, startMinutes] = start.split(':').map(Number);
-      const [endHours, endMinutes] = end.split(':').map(Number);
-      
-      let totalMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
-      
+      const [startHours, startMinutes] = start.split(":").map(Number);
+      const [endHours, endMinutes] = end.split(":").map(Number);
+
+      let totalMinutes =
+        endHours * 60 + endMinutes - (startHours * 60 + startMinutes);
+
       if (totalMinutes < 0) {
         totalMinutes += 24 * 60; // Handle overnight trips
       }
-      
+
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
-      
+
       return `Duration: ${hours}h ${minutes}m`;
     } catch (error) {
-      console.error('Error calculating duration:', error);
-      return 'Duration: N/A';
+      console.error("Error calculating duration:", error);
+      return "Duration: N/A";
     }
   };
 
@@ -380,9 +379,14 @@ const TripLogScreen = ({ navigation, route }) => {
       };
 
       // Show loading state
-      Alert.alert("Uploading", "Please wait while we upload your images...", [], {
-        cancelable: false
-      });
+      Alert.alert(
+        "Uploading",
+        "Please wait while we upload your images...",
+        [],
+        {
+          cancelable: false,
+        }
+      );
 
       // Upload images sequentially with error handling
       let startKmImageUrl, endKmImageUrl, signatureUrl;
@@ -423,7 +427,7 @@ const TripLogScreen = ({ navigation, route }) => {
         endKmImageUrl,
         customerSignatureUrl: signatureUrl || null,
         startTime, // Add start time
-        endTime,   // Add end time
+        endTime, // Add end time
         tollFees: "0",
         parkingFees: "0",
       };
@@ -432,7 +436,7 @@ const TripLogScreen = ({ navigation, route }) => {
         `/duty-slips/${dutySlipId}/complete`,
         tripData
       );
-      
+
       Alert.alert("Success", "Trip data submitted successfully!", [
         {
           text: "OK",
@@ -444,21 +448,19 @@ const TripLogScreen = ({ navigation, route }) => {
           },
         },
       ]);
-      
     } catch (error) {
       console.error("❌ Submission error:", error);
       let errorMessage = error.message || "Failed to submit trip data";
 
       // Handle specific Firebase errors
-      if (error.message.includes('storage/')) {
-        errorMessage = "Image upload failed. Please check your internet connection and try again.";
+      if (error.message.includes("storage/")) {
+        errorMessage =
+          "Image upload failed. Please check your internet connection and try again.";
       }
 
-      Alert.alert(
-        "Error",
-        errorMessage,
-        [{ text: "OK", onPress: () => setIsSubmitting(false) }]
-      );
+      Alert.alert("Error", errorMessage, [
+        { text: "OK", onPress: () => setIsSubmitting(false) },
+      ]);
     } finally {
       setIsSubmitting(false);
     }
@@ -747,103 +749,103 @@ const TripLogScreen = ({ navigation, route }) => {
       </Modal>
 
       <Modal visible={showPreview} animationType="slide" transparent={false}>
-  <View style={styles.modalContainer}>
-    <Text style={styles.modalTitle}>Trip Preview</Text>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Trip Preview</Text>
 
-    <ScrollView style={styles.previewContent}>
-      <DutyInfoPreview
-        id={dutySlipData.id}
-        category={dutySlipData.category}
-        pickupTime={dutySlipData.pickupTime}
-        party={dutySlipData.party}
-        address={dutySlipData.address}
-        contact={dutySlipData.contact}
-        driverName={dutySlipData.driverName}
-        carNumber={dutySlipData.carNumber}
-        tripRoute={dutySlipData.tripRoute}
-      />
-      
-      {/* Start KM Section with Time */}
-      <View style={styles.previewSection}>
-        <Text style={styles.previewSectionTitle}>Start KM</Text>
-        {startTime && (
-          <Text style={styles.previewText}>Start Time: {startTime}</Text>
-        )}
-        {startKmImage && (
-          <Image
-            source={startKmImage}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        )}
-        <Text style={styles.previewText}>
-          Manual Entry: {manualStartKm} km
-        </Text>
-      </View>
+          <ScrollView style={styles.previewContent}>
+            <DutyInfoPreview
+              id={dutySlipData.id}
+              category={dutySlipData.category}
+              pickupTime={dutySlipData.pickupTime}
+              party={dutySlipData.party}
+              address={dutySlipData.address}
+              contact={dutySlipData.contact}
+              driverName={dutySlipData.driverName}
+              carNumber={dutySlipData.carNumber}
+              tripRoute={dutySlipData.tripRoute}
+            />
 
-      {/* End KM Section with Time */}
-      <View style={styles.previewSection}>
-        <Text style={styles.previewSectionTitle}>End KM</Text>
-        {endTime && (
-          <Text style={styles.previewText}>End Time: {endTime}</Text>
-        )}
-        {endKmImage && (
-          <Image
-            source={endKmImage}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        )}
-        <Text style={styles.previewText}>
-          Manual Entry: {manualEndKm} km
-        </Text>
-      </View>
+            {/* Start KM Section with Time */}
+            <View style={styles.previewSection}>
+              <Text style={styles.previewSectionTitle}>Start KM</Text>
+              {startTime && (
+                <Text style={styles.previewText}>Start Time: {startTime}</Text>
+              )}
+              {startKmImage && (
+                <Image
+                  source={startKmImage}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
+              <Text style={styles.previewText}>
+                Manual Entry: {manualStartKm} km
+              </Text>
+            </View>
 
-      {/* Signature Section */}
-      <View style={styles.previewSection}>
-        <Text style={styles.previewSectionTitle}>Customer Signature</Text>
-        {signature ? (
-          <Image
-            source={signature}
-            style={styles.signaturePreview}
-            resizeMode="contain"
-          />
-        ) : (
-          <Text style={styles.previewText}>No signature saved</Text>
-        )}
-      </View>
+            {/* End KM Section with Time */}
+            <View style={styles.previewSection}>
+              <Text style={styles.previewSectionTitle}>End KM</Text>
+              {endTime && (
+                <Text style={styles.previewText}>End Time: {endTime}</Text>
+              )}
+              {endKmImage && (
+                <Image
+                  source={endKmImage}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
+              <Text style={styles.previewText}>
+                Manual Entry: {manualEndKm} km
+              </Text>
+            </View>
 
-      {/* Trip Duration Calculation (Optional) */}
-      {startTime && endTime && (
-        <View style={styles.previewSection}>
-          <Text style={styles.previewSectionTitle}>Trip Duration</Text>
-          <Text style={styles.previewText}>
-            {calculateDuration(startTime, endTime)}
-          </Text>
+            {/* Signature Section */}
+            <View style={styles.previewSection}>
+              <Text style={styles.previewSectionTitle}>Customer Signature</Text>
+              {signature ? (
+                <Image
+                  source={signature}
+                  style={styles.signaturePreview}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.previewText}>No signature saved</Text>
+              )}
+            </View>
+
+            {/* Trip Duration Calculation (Optional) */}
+            {startTime && endTime && (
+              <View style={styles.previewSection}>
+                <Text style={styles.previewSectionTitle}>Trip Duration</Text>
+                <Text style={styles.previewText}>
+                  {calculateDuration(startTime, endTime)}
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.closeButton]}
+              onPress={() => setShowPreview(false)}
+            >
+              <Text style={styles.buttonText}>CLOSE</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.submitButton]}
+              onPress={() => {
+                setShowPreview(false);
+                submitTripData();
+              }}
+            >
+              <Text style={styles.buttonText}>SUBMIT TRIP</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
-    </ScrollView>
-
-    <View style={styles.modalButtons}>
-      <TouchableOpacity
-        style={[styles.modalButton, styles.closeButton]}
-        onPress={() => setShowPreview(false)}
-      >
-        <Text style={styles.buttonText}>CLOSE</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.modalButton, styles.submitButton]}
-        onPress={() => {
-          setShowPreview(false);
-          submitTripData();
-        }}
-      >
-        <Text style={styles.buttonText}>SUBMIT TRIP</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
+      </Modal>
 
       <Footer />
 
@@ -1161,17 +1163,17 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 16,
-    color: '#800000',
-    fontWeight: 'bold',
+    color: "#800000",
+    fontWeight: "bold",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   durationText: {
     fontSize: 16,
-    color: '#800000',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    color: "#800000",
+    fontWeight: "bold",
+    textAlign: "center",
     marginTop: 5,
   },
 });
