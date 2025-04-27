@@ -12,12 +12,27 @@ import {
   Animated,
   Dimensions,
   Alert,
+  ActivityIndicator,
 } from "react-native";
+
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "../../utils/api";
-import { storeDriverData } from '../../utils/auth';
+import { storeDriverData } from "../../utils/auth";
 
 const { width, height } = Dimensions.get("window");
+
+const LoadingOverlay = ({ visible }) => {
+  if (!visible) return null;
+
+  return (
+    <View style={styles.loadingOverlay}>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#800000" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    </View>
+  );
+};
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState("");
@@ -509,8 +524,11 @@ const LoginScreen = ({ navigation }) => {
                 />
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.disabledButton]}
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
               <Text style={styles.loginButtonText}>LOGIN</Text>
             </TouchableOpacity>
 
@@ -563,8 +581,9 @@ const LoginScreen = ({ navigation }) => {
                   )}
                 </View>
                 <TouchableOpacity
-                  style={styles.otpButton}
+                  style={[styles.otpButton, isLoading && styles.disabledButton]}
                   onPress={handleSendOTP}
+                  disabled={isLoading}
                 >
                   <Text style={styles.otpButtonText}>SEND OTP</Text>
                 </TouchableOpacity>
@@ -593,8 +612,9 @@ const LoginScreen = ({ navigation }) => {
                   <Text style={styles.clearOtpButtonText}>Resend OTP</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.otpButton}
+                  style={[styles.otpButton, isLoading && styles.disabledButton]}
                   onPress={handleVerifyOTP}
+                  disabled={isLoading}
                 >
                   <Text style={styles.otpButtonText}>VERIFY OTP</Text>
                 </TouchableOpacity>
@@ -670,8 +690,12 @@ const LoginScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
-                  style={styles.resetButton}
+                  style={[
+                    styles.resetButton,
+                    isLoading && styles.disabledButton,
+                  ]}
                   onPress={handleResetPassword}
+                  disabled={isLoading}
                 >
                   <Text style={styles.resetButtonText}>RESET PASSWORD</Text>
                 </TouchableOpacity>
@@ -680,6 +704,7 @@ const LoginScreen = ({ navigation }) => {
             )}
         </View>
       </Modal>
+      <LoadingOverlay visible={isLoading} />
     </View>
   );
 };
@@ -944,6 +969,38 @@ const styles = StyleSheet.create({
   clearOtpButtonText: {
     color: "#800000",
     textDecorationLine: "underline",
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: "#fff",
+    padding: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#800000",
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: "#cccccc",
+    shadowColor: "#cccccc",
   },
 });
 

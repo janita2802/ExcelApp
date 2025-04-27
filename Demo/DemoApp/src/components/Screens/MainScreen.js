@@ -20,6 +20,19 @@ import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 import api from "../../utils/api";
 
+const LoadingOverlay = ({ visible }) => {
+  if (!visible) return null;
+
+  return (
+    <View style={styles.loadingOverlay}>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#800000" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    </View>
+  );
+};
+
 const MainScreen = ({ navigation, route }) => {
   // State management
   const [state, setState] = useState({
@@ -223,6 +236,7 @@ const MainScreen = ({ navigation, route }) => {
             onLogout={handleLogout}
             onSelect={(screen) => navigation.navigate(screen)}
           />
+          <LoadingOverlay visible={state.isLoading} />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -328,6 +342,34 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
+  }, // Add these new styles for loading overlay
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: "#fff",
+    padding: 30,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#800000",
+    fontSize: 16,
   },
 });
 
