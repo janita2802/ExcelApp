@@ -370,38 +370,34 @@ const LoginScreen = ({ navigation }) => {
     // Filter non-numeric characters
     const numericValue = text.replace(/[^0-9]/g, "");
 
-    // Handle paste operation (when text length > 1)
-    if (numericValue.length > 1) {
-      const pastedOtp = numericValue.split("").slice(0, 5);
-      const newOtp = [...otp];
+    const newOtp = [...otp];
 
-      // Fill OTP fields with pasted values
-      pastedOtp.forEach((digit, i) => {
-        if (i < 5) newOtp[i] = digit;
+    if (numericValue.length > 1) {
+      // Handle autofill or paste of full OTP
+      const digits = numericValue.split("").slice(0, 5);
+      digits.forEach((digit, idx) => {
+        newOtp[idx] = digit;
       });
 
       setOtp(newOtp);
 
-      // Focus the last input of pasted OTP
-      const focusIndex = Math.min(pastedOtp.length - 1, 4);
+      // Focus last filled digit
+      const lastIndex = digits.length - 1;
       setTimeout(() => {
-        otpInputRefs.current[focusIndex]?.focus();
-        setActiveOtpIndex(focusIndex);
+        otpInputRefs.current[lastIndex]?.focus();
+        setActiveOtpIndex(lastIndex);
       }, 0);
-      return;
-    }
+    } else {
+      // Normal single digit input
+      newOtp[index] = numericValue;
+      setOtp(newOtp);
 
-    // Handle autofill or manual single-digit entry
-    const newOtp = [...otp];
-    newOtp[index] = numericValue;
-    setOtp(newOtp);
-
-    // Auto-focus next input if current input is filled
-    if (numericValue && index < 4) {
-      setTimeout(() => {
-        otpInputRefs.current[index + 1]?.focus();
-        setActiveOtpIndex(index + 1);
-      }, 0);
+      if (numericValue && index < 4) {
+        setTimeout(() => {
+          otpInputRefs.current[index + 1]?.focus();
+          setActiveOtpIndex(index + 1);
+        }, 0);
+      }
     }
   };
 
