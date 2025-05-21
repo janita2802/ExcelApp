@@ -299,7 +299,7 @@ const ProfileInfo = ({ navigation, route }) => {
         isReset: false,
       };
 
-      const response = await api.post("/auth/change-password", dataToSend);
+      const response = await api.post("/driverauth/change-password", dataToSend);
 
       if (response.data.success) {
         Alert.alert("Success", "Password updated successfully", [

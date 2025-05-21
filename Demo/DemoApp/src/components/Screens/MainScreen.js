@@ -99,7 +99,7 @@ const MainScreen = ({ navigation, route }) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await api.get(`/duty-slips/${state.dutySlipId.trim()}`, {
+      const response = await api.get(`/dutyslips/check/${state.dutySlipId.trim()}`, {
         timeout: 10000,
       });
       const slip = response.data;

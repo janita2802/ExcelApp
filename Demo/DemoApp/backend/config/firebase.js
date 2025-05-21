@@ -7,7 +7,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase Admin with your service account credentials
-const serviceAccount = require("../config/serviceAccountKey.json");
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 const app = initializeApp({
   credential: cert(serviceAccount),

@@ -5,8 +5,7 @@ const OTP = require("../models/OTP");
 // const { sendEmail } = require("../utils/sendEmail");
 // const { getOTPEmailTemplate } = require("../utils/emailTemplates");
 const { sendOtpSms } = require("../services/smsService");
-const { generateOtp, formatPhoneNumber } = require("../utils/otpGenerator");
-const { otpLimiter } = require("../middleware/rateLimiter");
+const { otpLimiter } = require("../middlewares/rateLimiter");
 
 // Login endpoint
 router.post("/login", async (req, res) => {

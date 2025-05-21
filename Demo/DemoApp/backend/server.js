@@ -43,9 +43,9 @@ mongoose
   .catch((err) => console.error("MongoDB connection error:", err));
 
 const authRoutes = require("./routes/auth");
-app.use("/api/auth", authRoutes);
+app.use("/api/driverauth", authRoutes);
 const dutySlipRoutes = require("./routes/dutySlip");
-app.use("/api/duty-slips", dutySlipRoutes);
+app.use("/api/dutyslips", dutySlipRoutes);
 const driverRoutes = require("./routes/driver");
 app.use("/api/drivers", driverRoutes);
 

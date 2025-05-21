@@ -135,7 +135,7 @@ const LoginScreen = ({ navigation }) => {
       // Show loading indicator
       setIsLoading(true);
 
-      const response = await api.post("/auth/login", {
+      const response = await api.post("/driverauth/login", {
         username: username.trim(),
         password: password.trim(),
       });
@@ -177,7 +177,7 @@ const LoginScreen = ({ navigation }) => {
       // Show loading indicator
       setIsLoading(true);
 
-      const response = await api.post("/auth/send-otp", {
+      const response = await api.post("/driverauth/send-otp", {
         contact: mobileNumber.trim(),
       });
 
@@ -220,7 +220,7 @@ const LoginScreen = ({ navigation }) => {
       // Show loading indicator
       setIsLoading(true);
 
-      const response = await api.post("/auth/verify-otp", {
+      const response = await api.post("/driverauth/verify-otp", {
         contact: mobileNumber.trim(),
         otp: enteredOtp.trim(),
       });
@@ -278,7 +278,7 @@ const LoginScreen = ({ navigation }) => {
       // Show loading indicator
       setIsLoading(true);
 
-      const response = await api.post("/auth/change-password", {
+      const response = await api.post("/driverauth/change-password", {
         contact: mobileNumber.trim(),
         newPassword: newPassword.trim(),
         confirmPassword: confirmPassword.trim(),

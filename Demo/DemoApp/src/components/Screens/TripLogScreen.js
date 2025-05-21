@@ -308,7 +308,7 @@ const TripLogScreen = ({ navigation, route }) => {
         blob = await response.blob();
       } else {
         const response = await api.post(
-          `/duty-slips/${dutySlipId}/image`,
+          `/dutyslips/${dutySlipId}/image`,
           formData,
           {
             headers: {
@@ -414,7 +414,7 @@ const TripLogScreen = ({ navigation, route }) => {
       };
 
       const response = await api.post(
-        `/duty-slips/${dutySlipId}/complete`,
+        `/dutyslips/${dutySlipId}/complete`,
         tripData
       );
 

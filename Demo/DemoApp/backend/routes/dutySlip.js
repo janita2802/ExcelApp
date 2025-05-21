@@ -23,7 +23,7 @@ const upload = multer({
 });
 
 // GET duty slip by ID
-router.get("/:id", async (req, res) => {
+router.get("/check/:id", async (req, res) => {
   try {
     const dutySlip = await DutySlip.findOne({
       dutySlipId: { $regex: new RegExp(`^${req.params.id}$`, "i") }, // 👈 regex for case-insensitive exact match

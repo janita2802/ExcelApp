@@ -34,7 +34,7 @@ const DutyHistory = ({ navigation }) => {
 
       const driverId = await getDriverId();
       const params = { driverId: driverId };
-      const response = await api.get("/duty-slips/history/completed", {
+      const response = await api.get("/dutyslips/history/completed", {
         params,
       });
 
