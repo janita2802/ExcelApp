@@ -2,8 +2,8 @@ require('dotenv').config();
 
 export default {
   expo: {
-    name: "DemoApp",
-    slug: "DemoApp",
+    name: "ExcelApp",
+    slug: "ExcelApp",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -22,7 +22,7 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
-      package: "com.exceltt.DemoApp",
+      package: "com.exceltt.ExcelApp",
     },
     web: {
       favicon: "./assets/favicon.png",
