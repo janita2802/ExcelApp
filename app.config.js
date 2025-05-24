@@ -2,11 +2,11 @@ require('dotenv').config();
 
 export default {
   expo: {
-    name: "ExcelApp",
+    name: "Excel Tours & Travels",
     slug: "ExcelApp",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/logo.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {
@@ -38,8 +38,9 @@ export default {
       FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
       FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
       eas: {
-        projectId: "903350f0-d134-4087-a20f-add394266e41",
-      },
+        projectId: "43ba56e3-b5f9-4733-9de6-b071ffc2358d"
+      }
     },
+    owner: "exceltt"
   },
 };
