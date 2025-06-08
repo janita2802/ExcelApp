@@ -24,25 +24,7 @@ import SignatureScreen from "react-native-signature-canvas";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { initializeApp } from "firebase/app";
-import Constants from "expo-constants";
 import { getDriverData } from "../../utils/auth";
-
-// Initialize Firebase
-const firebaseConfig = {
-  apiKey: Constants.expoConfig.extra.FIREBASE_API_KEY,
-  authDomain: Constants.expoConfig.extra.FIREBASE_AUTH_DOMAIN,
-  projectId: Constants.expoConfig.extra.FIREBASE_YOUR_PROJECT_ID,
-  storageBucket: Constants.expoConfig.extra.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: Constants.expoConfig.extra.FIREBASE_YOUR_SENDER_ID,
-  appId: Constants.expoConfig.extra.FIREBASE_APP_ID,
-  measurementId: Constants.expoConfig.extra.FIREBASE_MEASUREMENT_ID,
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const storage = getStorage(app);
 
 const TripLogScreen = ({ navigation, route }) => {
   const { dutySlipData } = route.params;
@@ -302,25 +284,19 @@ const TripLogScreen = ({ navigation, route }) => {
         type: "image/jpeg",
       });
 
-      let blob;
-      if (uri.startsWith("data:")) {
-        const response = await fetch(uri);
-        blob = await response.blob();
-      } else {
-        const response = await api.post(
-          `/dutyslips/${dutySlipId}/image`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+      const response = await api.post(
+        `/dutyslips/${dutySlipId}/image`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-        setUploadStatus({ type: "success", message: "Image uploaded!" });
-        setTimeout(() => setUploadStatus(null), 3000);
-        return response.data.image;
-      }
+      setUploadStatus({ type: "success", message: "Image uploaded!" });
+      setTimeout(() => setUploadStatus(null), 3000);
+      return response.data.image;
     } catch (error) {
       console.error("Upload failed:", error);
       setUploadStatus({ type: "error", message: "Upload failed" });
