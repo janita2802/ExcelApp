@@ -281,7 +281,7 @@ const LoginScreen = ({ navigation }) => {
       const response = await api.post("/driverauth/change-password", {
         contact: mobileNumber.trim(),
         newPassword: newPassword.trim(),
-        confirmPassword: confirmPassword.trim(),
+        currentPassword: "",
         isReset: true,
       });
 
