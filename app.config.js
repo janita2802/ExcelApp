@@ -34,7 +34,10 @@ export default {
         projectId: "43ba56e3-b5f9-4733-9de6-b071ffc2358d"
       }
     },
-    owner: "exceltt"
+    owner: "exceltt",
+    plugins: [
+      "expo-secure-store"
+    ]
   },
   assetBundlePatterns: ["**/*"]
 };

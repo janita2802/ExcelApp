@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import {
   View,
   StyleSheet,
@@ -17,6 +17,7 @@ import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
+import { AuthContext } from '../../context/AuthContext';
 
 const { width } = Dimensions.get("window");
 
@@ -25,9 +26,17 @@ const DutySlipInfoScreen = ({ navigation, route }) => {
   const submitted = true;
   const { dutySlipData } = route.params;
 
-  const handleLogout = () => {
-    navigation.navigate("Login");
-  };
+  const { signOut } = useContext(AuthContext);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut();  // This will automatically trigger the navigation change
+      console.log("Logout successful");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Error", "Failed to logout properly");
+    } 
+  }, [signOut]);
 
   const handleAddressPress = (address) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import {
 
 import Icon from "react-native-vector-icons/MaterialIcons";
 import api from "../../utils/api";
-import { storeDriverData } from "../../utils/auth";
+import { AuthContext } from "../../context/AuthContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -35,6 +35,7 @@ const LoadingOverlay = ({ visible }) => {
 };
 
 const LoginScreen = ({ navigation }) => {
+  const { signIn } = useContext(AuthContext);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -124,47 +125,42 @@ const LoginScreen = ({ navigation }) => {
   const handleFocus = (inputName) => setFocusedInput(inputName);
   const handleBlur = () => setFocusedInput(null);
 
-  const handleLogin = async () => {
-    try {
+const handleLogin = async () => {
+  try {
       // Basic validation
-      if (!username.trim() || !password.trim()) {
-        Alert.alert("Error", "Please enter both username and password");
-        return;
-      }
+    if (!username.trim() || !password.trim()) {
+      Alert.alert("Error", "Please enter both username and password");
+      return;
+    }
 
       // Show loading indicator
-      setIsLoading(true);
+    setIsLoading(true);
 
-      const response = await api.post("/driverauth/login", {
-        username: username.trim(),
-        password: password.trim(),
-      });
+    const response = await api.post("/driverauth/login", {
+      username: username.trim(),
+      password: password.trim(),
+    });
 
-      if (response.data.message === "Login successful") {
-        await storeDriverData(response.data.driver);
-        resetAllFields();
-        navigation.navigate("Main", {
-          driver: response.data.driver,
-        });
-      } else {
-        Alert.alert("Error", response.data.message || "Login failed");
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-
-      let errorMessage = "An error occurred during login";
-      if (error.response) {
-        errorMessage = error.response.data.message || errorMessage;
-      } else if (error.request) {
-        errorMessage =
-          "Could not connect to server. Please check your internet connection";
-      }
-
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsLoading(false);
+    if (response.data.message === "Login successful") {
+      // Store the token using AuthContext
+      await signIn(response.data.token, response.data.driver);
+      resetAllFields();
+    } else {
+      Alert.alert("Error", response.data.message || "Login failed");
     }
-  };
+  } catch (error) {
+    console.error("Login error:", error);
+    let errorMessage = "An error occurred during login";
+    if (error.response) {
+      errorMessage = error.response.data.message || errorMessage;
+    } else if (error.request) {
+      errorMessage = "Could not connect to server. Please check your internet connection";
+    }
+    Alert.alert("Error", errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSendOTP = async () => {
     try {

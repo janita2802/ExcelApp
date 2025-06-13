@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext, useCallback } from "react";
 import DutyInfoPreview from "./DutyInfoPreview";
 import api from "../../utils/api";
 import {
@@ -25,6 +25,7 @@ import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 import { getDriverData } from "../../utils/auth";
+import { AuthContext } from '../../context/AuthContext';
 
 const TripLogScreen = ({ navigation, route }) => {
   const { dutySlipData } = route.params;
@@ -54,6 +55,8 @@ const TripLogScreen = ({ navigation, route }) => {
 
   const signatureRef = useRef();
   const scrollViewRef = useRef();
+
+  const { signOut } = useContext(AuthContext);
 
   const validateTripData = () => {
     if (!startKmImage?.uri || !manualStartKm) {
@@ -97,9 +100,15 @@ const TripLogScreen = ({ navigation, route }) => {
     }
   }, [signature]);
 
-  const handleLogout = () => {
-    navigation.navigate("Login");
-  };
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut();  // This will automatically trigger the navigation change
+      console.log("Logout successful");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Error", "Failed to logout properly");
+    } 
+  }, [signOut]);
 
   const handleImageSelection = (type) => {
     setCurrentImageType(type);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useContext } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { TouchableWithoutFeedback, Keyboard } from "react-native";
 import {
@@ -19,6 +19,7 @@ import Header from "../Common/Header";
 import Footer from "../Common/Footer";
 import Menu from "../Common/Menu";
 import api from "../../utils/api";
+import { AuthContext } from '../../context/AuthContext';
 
 const LoadingOverlay = ({ visible }) => {
   if (!visible) return null;
@@ -33,7 +34,9 @@ const LoadingOverlay = ({ visible }) => {
   );
 };
 
-const MainScreen = ({ navigation, route }) => {
+const MainScreen = ({ navigation }) => {
+   const { driver } = useContext(AuthContext); // Get driver from context
+
   // State management
   const [state, setState] = useState({
     menuVisible: false,
@@ -42,16 +45,21 @@ const MainScreen = ({ navigation, route }) => {
     isLoading: false,
   });
 
-  // Derived values from route params.
-  const driver = route?.params?.driver || {};
   const userName = driver?.name || "Driver";
-  const driverId = driver.driverId;
+  const driverId = driver?.driverId;
+
+  const { signOut } = useContext(AuthContext);
 
   // Memoized handlers
-  const handleLogout = useCallback(
-    () => navigation.navigate("Login"),
-    [navigation]
-  );
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut();  // This will automatically trigger the navigation change
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Error", "Failed to logout properly");
+    } 
+  }, [signOut]);
+
   const clearInput = useCallback(
     () => setState((prev) => ({ ...prev, dutySlipId: "" })),
     []
@@ -72,8 +80,7 @@ const MainScreen = ({ navigation, route }) => {
             { text: "Cancel", style: "cancel" },
             {
               text: "Yes",
-              onPress: () =>
-                navigation.reset({ index: 0, routes: [{ name: "Login" }] }),
+              onPress: handleLogout  // Just call handleLogout without navigation
             },
           ],
           { cancelable: true }
@@ -86,7 +93,7 @@ const MainScreen = ({ navigation, route }) => {
         onBackPress
       );
       return () => backHandler.remove();
-    }, [navigation])
+    }, [handleLogout])  // Add handleLogout to dependencies
   );
 
   // Form submission handler

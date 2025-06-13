@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import api from "../../utils/api";
 import { getDriverId, updateDriverProfilePic } from "../../utils/auth";
+import { AuthContext } from '../../context/AuthContext';
+import { getAuthToken, clearDriverData } from "../../utils/auth";
 
 const ProfileInfo = ({ navigation, route }) => {
   const [profile, setProfile] = useState({
@@ -46,6 +48,8 @@ const ProfileInfo = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
+  const { signOut } = useContext(AuthContext);
+
   useEffect(() => {
     if (route.params?.driver) {
       const { driver } = route.params;
@@ -70,15 +74,18 @@ const ProfileInfo = ({ navigation, route }) => {
     const fetchDriverProfile = async () => {
       try {
         const driverId = await getDriverId();
-        if (!driverId) {
-          navigation.navigate("Login");
+        const token = await getAuthToken();
+        
+        // Instead of navigation, check auth state
+        if (!driverId || !token) {
+          await signOut(); // This will trigger the AuthContext to show Login screen
           return;
         }
 
         const response = await api.get(`/drivers/${driverId}`);
         const driverData = response.data;
 
-        setProfile((prev) => ({
+        setProfile(prev => ({
           ...prev,
           driverId: driverData.driverId || "",
           name: driverData.name || "",
@@ -95,14 +102,18 @@ const ProfileInfo = ({ navigation, route }) => {
         }
       } catch (error) {
         console.error("Failed to fetch driver profile:", error);
-        Alert.alert("Error", "Could not load profile data");
+        if (error.response?.status === 401) {
+          await signOut(); // Handle unauthorized
+        } else {
+          Alert.alert("Error", "Could not load profile data");
+        }
       }
     };
 
     if (!route.params?.driver) {
       fetchDriverProfile();
     }
-  }, []);
+  }, [signOut]); // Add signOut to dependencies
 
   const pickImage = async () => {
     Alert.alert(
