@@ -6,7 +6,7 @@ export default {
     slug: "ExcelApp",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/logo.png",
+    icon: "./assets/app-icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
     splash: {
@@ -19,13 +19,13 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/logo.png",
+        foregroundImage: "./assets/app-icon.png",
         backgroundColor: "#ffffff",
       },
       package: "com.exceltt.ExcelApp",
     },
     web: {
-      favicon: "./assets/logo.png",
+      favicon: "./assets/app-icon.png",
     },
     extra: {
       // Dynamically inject .env variables here!
