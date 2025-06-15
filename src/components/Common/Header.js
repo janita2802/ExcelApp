@@ -15,7 +15,7 @@ const Header = ({ onMenuPress }) => {
       </View>
 
       {/* Centered title */}
-      <Text style={styles.title}>Excel Travels & Tours</Text>
+      <Text style={styles.title}>Excel Tours & Travels</Text>
 
       {/* Hamburger menu on right */}
       <TouchableOpacity onPress={onMenuPress} style={styles.menuButton}>
